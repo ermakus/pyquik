@@ -23,7 +23,7 @@ public:
     virtual void onTableData(char const *topic, char const *item, Table *table);
     virtual void onConnected();
     virtual void onDisconnected();
-    virtual void onTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum, char const *lpcstrTransactionReplyMessage);
+    virtual void onTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum, std::string message);
 
 
 /* Internal Director utilities */

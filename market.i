@@ -1,3 +1,4 @@
+%include stl.i
 %module(directors="1") trading
 
 %{

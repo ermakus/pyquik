@@ -19,9 +19,9 @@ public:
 	int cols();
 	int rows();
 
-	const char* getString(int r, int c);
+	std::string getString(int r, int c);
 	double		getDouble(int r, int c);
-	void		setString(int r, int c, const char* val);
+	void		setString(int r, int c, std::string val);
 	void		setDouble(int r, int c, double val);
 };
 
@@ -32,7 +32,7 @@ public:
 	virtual void onTableData( const char* topic, const char* item, Table* table ) {};
 	virtual void onConnected() {};
 	virtual void onDisconnected() {};
-	virtual void onTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum, const char* lpcstrTransactionReplyMessage) {}
+	virtual void onTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum, std::string message) {}
 };
 
 class Market {
@@ -41,7 +41,6 @@ class Market {
   DWORD		 m_dwThreadId;
   long		 m_nExtendedErrorCode;
   long		 m_nResult;
-  char		 m_szErrorMessage [1024];
 
 public:
   Market();
@@ -58,7 +57,9 @@ public:
 
   virtual long sendAsync(const char* trans);
 
-  virtual const char* errorMessage() { return m_szErrorMessage; }
+  virtual void setDebug(bool enabled);
+
+  virtual std::string errorMessage();
   virtual long        errorCode() { return m_nExtendedErrorCode; }
 
 

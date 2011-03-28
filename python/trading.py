@@ -73,6 +73,35 @@ except:
     weakref_proxy = lambda x: x
 
 
+class SwigPyIterator(_object):
+    __swig_setmethods__ = {}
+    __setattr__ = lambda self, name, value: _swig_setattr(self, SwigPyIterator, name, value)
+    __swig_getmethods__ = {}
+    __getattr__ = lambda self, name: _swig_getattr(self, SwigPyIterator, name)
+    def __init__(self, *args, **kwargs): raise AttributeError("No constructor defined - class is abstract")
+    __repr__ = _swig_repr
+    __swig_destroy__ = _trading.delete_SwigPyIterator
+    __del__ = lambda self : None;
+    def value(self): return _trading.SwigPyIterator_value(self)
+    def incr(self, n = 1): return _trading.SwigPyIterator_incr(self, n)
+    def decr(self, n = 1): return _trading.SwigPyIterator_decr(self, n)
+    def distance(self, *args): return _trading.SwigPyIterator_distance(self, *args)
+    def equal(self, *args): return _trading.SwigPyIterator_equal(self, *args)
+    def copy(self): return _trading.SwigPyIterator_copy(self)
+    def next(self): return _trading.SwigPyIterator_next(self)
+    def __next__(self): return _trading.SwigPyIterator___next__(self)
+    def previous(self): return _trading.SwigPyIterator_previous(self)
+    def advance(self, *args): return _trading.SwigPyIterator_advance(self, *args)
+    def __eq__(self, *args): return _trading.SwigPyIterator___eq__(self, *args)
+    def __ne__(self, *args): return _trading.SwigPyIterator___ne__(self, *args)
+    def __iadd__(self, *args): return _trading.SwigPyIterator___iadd__(self, *args)
+    def __isub__(self, *args): return _trading.SwigPyIterator___isub__(self, *args)
+    def __add__(self, *args): return _trading.SwigPyIterator___add__(self, *args)
+    def __sub__(self, *args): return _trading.SwigPyIterator___sub__(self, *args)
+    def __iter__(self): return self
+SwigPyIterator_swigregister = _trading.SwigPyIterator_swigregister
+SwigPyIterator_swigregister(SwigPyIterator)
+
 class Table(_object):
     __swig_setmethods__ = {}
     __setattr__ = lambda self, name, value: _swig_setattr(self, Table, name, value)
@@ -142,6 +171,7 @@ class Market(_object):
     def connect(self, *args): return _trading.Market_connect(self, *args)
     def disconnect(self): return _trading.Market_disconnect(self)
     def sendAsync(self, *args): return _trading.Market_sendAsync(self, *args)
+    def setDebug(self, *args): return _trading.Market_setDebug(self, *args)
     def errorMessage(self): return _trading.Market_errorMessage(self)
     def errorCode(self): return _trading.Market_errorCode(self)
 Market_swigregister = _trading.Market_swigregister

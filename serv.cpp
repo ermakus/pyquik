@@ -39,10 +39,11 @@ void CMarketServer::OnDisconnected()
 		(*it)->onDisconnected( );
 }
 
+
 void CMarketServer::OnTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum, const char* lpcstrTransactionReplyMessage)
 {
 	for( MarketListeners::const_iterator it = m_listeners.begin(); it != m_listeners.end(); it++)
-		(*it)->onTransactionResult( nTransactionResult, nTransactionExtendedErrorCode, nTransactionReplyCode, dwTransId, dOrderNum, lpcstrTransactionReplyMessage);
+		(*it)->onTransactionResult( nTransactionResult, nTransactionExtendedErrorCode, nTransactionReplyCode, dwTransId, dOrderNum, cp1251_to_utf8(lpcstrTransactionReplyMessage) );
 }
 
 BOOL CMarketServer::Poke(UINT wFmt, LPCTSTR pszTopic, LPCTSTR pszItem, void* pData, DWORD dwSize)
