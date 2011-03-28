@@ -1,6 +1,5 @@
 from trading import Market, MarketListener
 import re, traceback, sys
-import win32api, win32gui
 
 CLIENT_ACCOUNT="L01-00000F00"
 CLIENT_CODE=52709
@@ -8,6 +7,7 @@ CLIENT_CODE=52709
 
 TABLE_TOOLS="tools"
 TABLE_ORDERS="orders"
+TABLE_STOP_ORDERS="stop_orders"
 
 class Order:
 
@@ -35,7 +35,7 @@ class Order:
 
     LAST_ID = 1
 
-    FIELDS = ['trans_id','action','seccode','classcode','account','client_code','operation','quantity','stopprice','price','expiry_date']
+    FIELDS =['trans_id','action','seccode','classcode','account','client_code','operation','quantity','stopprice','price','expiry_date']
 
     ORDERS = {}
 
@@ -56,7 +56,7 @@ class Order:
         Order.ORDERS[ self.trans_id ] = self
 
     def execute(self):
-        if self.ticker.factory.market.sendAsync( str( self ) ):
+        if self.ticker.factory.quik.market.sendAsync( str( self ) ):
             raise Exception( self.ticker.factory.market.errorMessage() )
 
     def executed(self, result, status, serverId):
@@ -67,8 +67,22 @@ class Order:
     def __str__(self):
         return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in Order.FIELDS ] )
 
+class OrderFactory:
+
+    def __init__(self, quik):
+        self.quik  = quik
+        self.headers = False
+        self.orders = {}
+
+    def update( self, table, row ):
+        order = Order(self)
+        order.server_id = int(table.getString(row,self.headers.index("Номер")))
+        self.orders[ order.server_id ] = order
+        print( order )
 
 class Ticker:
+
+    FIELDS =['seccode','classcode','price','volume','balance']
 
     def __init__(self,factory,name):
         self.factory = factory
@@ -86,26 +100,61 @@ class Ticker:
         return o
 
     def __str__(self):
-        return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in self.__dict__ ]  )
+        return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in Ticker.FIELDS ]  )
 
-class QuikListener(MarketListener):
+class TickerFactory:
+
+    def __init__(self, quik):
+        self.quik    = quik
+        self.headers = False
+        self.tickers = {}
+
+    def update( self, table, r ):
+        ticker = Ticker(self, table.getString(r,self.headers.index("Код бумаги")))
+        ticker.classcode = table.getString(r,self.headers.index("Код класса"))
+        ticker.price =  float(table.getDouble(r,self.headers.index("Цена послед.")))
+        cumulativeAsk = int(table.getDouble(r,self.headers.index("Общ. спрос")))
+        cumulativeBid = int(table.getDouble(r,self.headers.index("Общ. предл.")))
+        ticker.volume = int(table.getDouble(r,self.headers.index("Оборот")))
+        summ = cumulativeBid + cumulativeAsk
+        if summ != 0:
+            ticker.balance = 100.0 * (cumulativeBid - cumulativeAsk) / summ
+            
+        self.tickers[ ticker.seccode ] = ticker
+        print("Ticker: %s" % ticker )
+
+    def ticker(self, name):
+        return self.tickers[ name ]
+
+
+class Quik(MarketListener):
 
     handlers = {}
 
     RE_TOPIC = re.compile("\\[(.*)\\](.*)");
     RE_ITEM  = re.compile("R(\\d*)C(\\d*):R(\\d*)C(\\d*)");
 
-
-    def __init__(self):
+    def __init__(self, quikPath ):
         MarketListener.__init__(self)
+        self.handlers[ TABLE_TOOLS ]      = TickerFactory( self )
+        self.handlers[ TABLE_STOP_ORDERS ] = OrderFactory( self )
+        self.market = Market()
+        self.market.setDebug( True )
+        self.market.addListener( self )
+        self.quikPath = quikPath
+
+    def __del__(self):
+        self.market.disconnect()
+        self.market.removeListener( self )
+        print("Diconnected")
 
     def onTableData(self, topic, item, table): 
        try:
-            tre = QuikListener.RE_TOPIC.match( topic )
+            tre = Quik.RE_TOPIC.match( topic )
             if not tre:
                 raise Exception( "Invalid topic format: " + topic )
 
-            ire = QuikListener.RE_ITEM.match( item )
+            ire = Quik.RE_ITEM.match( item )
             if not ire:
                 raise Exception( "Invalid item format: " + item )
 
@@ -117,10 +166,31 @@ class QuikListener(MarketListener):
             cols  = int( ire.group(4) ) - col;
 
             if table.cols() != cols or table.rows() != rows:
-                raise Exception( "Table data do not match item format")
+                raise Exception( "Table data don't match item format")
 
             if title in self.handlers:
-                self.handlers[ title ].update( row, col, rows, cols, table )
+                handler = self.handlers[ title ]
+                # Init table header
+                if row == 0:
+                    top = 1
+                    handler.headers = [ table.getString(0, c) for c in range( cols ) ]
+                else:
+                    top = 0
+                    if not handler.headers:
+                        raise Exception("Headers for table '%s' not found" % title )
+
+                # Call handler for each table row
+                for r in range(top,rows):
+                    handler.update( table, r )
+
+                # Fire onDataReady if all tables is loaded
+                if row == 0:
+                    wait = len( self.handlers )
+                    for h in self.handlers:
+                        if self.handlers[ h ].headers: 
+                            wait -= 1
+                    if wait == 0: 
+                        self.onDataReady()
 
        except:
             traceback.print_exc(file=sys.stdout)
@@ -137,69 +207,33 @@ class QuikListener(MarketListener):
         except:
             traceback.print_exc(file=sys.stdout)
 
-class TickerFactory:
-
-    def __init__(self,quikPath,onupdate=None):
-        self.headers = False
-        self.onupdate = onupdate
-        self.tickers = {}
-        self.market = Market()
-        self.market.setDebug( True )
-        self.listener = QuikListener()
-        self.listener.handlers[ TABLE_TOOLS ] = self
-        self.market.addListener( self.listener )
-        if self.market.connect( quikPath ): 
+    def onDataReady(self):
+        print("Data is ready - connecting")
+        if self.market.connect( self.quikPath ):
             raise Exception( self.market.errorMessage() )
 
-    def __del__(self):
-        self.market.disconnect()
-        self.market.removeListener( self.listener )
-        print("Diconnected")
-
-    def update( self, row, col, rows, cols, table ):
-        top = 0
-
-        if row == 0:
-            self.headers = [ table.getString(0, c) for c in range( cols ) ]
-            print( self.headers )
-            top = 1
-
-        if not self.headers:
-            raise Exception("Headers not set")
-
-        for r in range(top, rows):
-            ticker = Ticker(self, table.getString(r,self.headers.index("Код бумаги")))
-            ticker.classcode = table.getString(r,self.headers.index("Код класса"))
-            ticker.price =  float(table.getDouble(r,self.headers.index("Цена послед.")))
-            cumulativeAsk = int(table.getDouble(r,self.headers.index("Общ. спрос")))
-            cumulativeBid = int(table.getDouble(r,self.headers.index("Общ. предл.")))
-            ticker.volume = int(table.getDouble(r,self.headers.index("Оборот")))
-            summ = cumulativeBid + cumulativeAsk
-            if summ != 0:
-                ticker.balance = 100.0 * (cumulativeBid - cumulativeAsk) / summ
-            
-            self.tickers[ ticker.seccode ] = ticker
-            if self.onupdate: self.onupdate( ticker )
-
-        def ticker(self, name):
-            return self.tickers[ name ]
-
+        sber = self.handlers[ TABLE_TOOLS ].ticker("SBER03")
+        order = tool.order('NEW_STOP_ORDER') 
+        print( sber )
+        print( order )
 
     def run(self):
+        try:
+            import win32gui
+            hwnd = win32gui.FindWindow( "InfoClass", "[bcst2709  UID: 54622] Информационно-торговая система QUIK (версия 5.17.0.165)" )
+            if hwnd:
+                win32gui.PostMessage( hwnd, 0x111, 0x0015C, 0x00 ) # WM_COMMAND 'Stop DDE export'
+                win32gui.PostMessage( hwnd, 0x111, 0x1013F, 0x00 ) # WM_COMMAND 'Start DDE export'
+            else:
+                raise Exception("Quik window not found")
+        except Exception as ex:
+            print("Can't autostart DDE export (%s). Swich to Quik and press Ctrl+Shift+L to start" % ex)
+
         self.market.run()
 
-def ticker( tool ):
-    print( tool )
-#    order = tool.order('NEW_STOP_ORDER') 
-#    print( order )
-#    order.execute()
-
 if __name__ == "__main__":
-#    hwnd = win32gui.FindWindow( "InfoClass", "Информационная система QUIK (версия 5.17.0.165)" )
-#    win32gui.PostMessage( hwnd, 0x111, 0x64, 0x200EA )
-#    hwnd = win32gui.FindWindow( 0, "Идентификация пользователя" )
-#    print( hwnd )
 
-    market = TickerFactory("c:\\quik",ticker)
-    market.run()
+    quik = Quik("c:\\quik")
+
+    quik.run()
 
