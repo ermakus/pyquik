@@ -150,37 +150,56 @@ def check( code ):
     if code: raise TA_Exception( code )
 
 class TA_Param:
-    def __init__(self,name,type, flags):
+
+    def __init__(self,index, name, type, flags):
+        self.index = index
         self.name = name
         self.type = type
         self.flags = flags
-
-    def __call__(self,func,arg):
-        print( "Set param: %s=%s" % (self.name, arg ) )
 
     def __str__(self):
         return self.name
 
 class TA_InParam(TA_Param):
-    pass
+
+    def set_value(self,func, arg):
+        if self.type == TA_Input_Real: return func.set_input_real( self.index, arg )
+        if self.type == TA_Input_Integer:  return func.set_input_int( self.index, arg )
+        raise TA_Exception("Unsupported param type: %s" % self.type )
 
 class TA_OutParam(TA_Param):
-    pass
+
+    def set_value(self,func, arg):
+        if self.type == TA_Output_Real: return func.set_out_real( self.index, arg )
+        if self.type == TA_Output_Integer:  return func.set_out_int( self.index, arg )
+        raise TA_Exception("Unsupported param type: %s" % self.type )
 
 class TA_OptParam(TA_Param):
-    def __init__(self,name,type, flags,display,default,hint):
-        TA_Param.__init__(self,name,type,flags)
+
+    def __init__(self,index,name,type, flags,display,default,hint):
+        TA_Param.__init__(self,index,name,type,flags)
         self.display = display
         self.default = default
         self.hint = hint
 
+    def set_value(self,func, arg):
+        if self.type == TA_OptInput_RealRange: return func.set_opt_real( self.index, arg )
+        if self.type == TA_OptInput_RealList: return func.set_opt_real( self.index, arg )
+        if self.type == TA_OptInput_IntegerRange:  return func.set_opt_int( self.index, arg )
+        if self.type == TA_OptInput_IntegerList:  return func.set_opt_int( self.index, arg )
+        raise TA_Exception("Unsupported param type: %s" % self.type )
+
     def __str__(self):
         return self.name + "=" + str(self.default)
 
-class TA_Func:
+cdef class TA_Func:
+
+    cdef TA_FuncHandle* handle
+    cdef char* name
+    cdef list  params
+    cdef TA_ParamHolder* ph
 
     def __init__(self,char* name):
-        cdef TA_FuncHandle* ha
         cdef TA_FuncInfo* funcInfo
         cdef TA_InputParameterInfo *inParamInfo
         cdef TA_OptInputParameterInfo *optInParamInfo
@@ -189,20 +208,20 @@ class TA_Func:
         self.name = name
         self.params = []
 
-        check( TA_GetFuncHandle( name, &ha ) )
-        check( TA_GetFuncInfo( ha, &funcInfo ) )
+        check( TA_GetFuncHandle( name, &self.handle ) )
+        check( TA_GetFuncInfo( self.handle, &funcInfo ) )
 
         for i in range( funcInfo.nbInput ):
             check( TA_GetInputParameterInfo( funcInfo.handle, i, &inParamInfo ) )
-            self.params.append( TA_InParam( inParamInfo.paramName,inParamInfo.type, inParamInfo.flags) )
+            self.params.append( TA_InParam( i, inParamInfo.paramName,inParamInfo.type, inParamInfo.flags) )
 
         for i in range( funcInfo.nbOutput ):
             check( TA_GetOutputParameterInfo( funcInfo.handle, i, &outParamInfo ) )
-            self.params.append( TA_OutParam( outParamInfo.paramName,outParamInfo.type, outParamInfo.flags) )
+            self.params.append( TA_OutParam( i, outParamInfo.paramName,outParamInfo.type, outParamInfo.flags) )
 
         for i in range( funcInfo.nbOptInput ):
             check( TA_GetOptInputParameterInfo( funcInfo.handle, i, &optInParamInfo ) )
-            self.params.append( TA_OptParam( optInParamInfo.paramName,optInParamInfo.type, optInParamInfo.flags, optInParamInfo.displayName, optInParamInfo.defaultValue, optInParamInfo.hint) )
+            self.params.append( TA_OptParam( i, optInParamInfo.paramName,optInParamInfo.type, optInParamInfo.flags, optInParamInfo.displayName, optInParamInfo.defaultValue, optInParamInfo.hint) )
 
     def get_param(self,name):
         for p in self.params:
@@ -210,13 +229,44 @@ class TA_Func:
                 return p
         raise TA_Exception("Invalid argument: %s" % name )
 
-    def __call__(self,*args,**kwargs):
-        i = 0
-        for arg in args:
-            self.params[i](self,arg)
-            i += 1
-        for name in kwargs:
-            self.get_param(name)(self,kwargs[name])
+    def __call__(self,startIndex,endIndex,*args,**kwargs):
+        cdef int lookback
+        cdef int outbegidx = 0
+        cdef int outnbelement = 0
+        check( TA_ParamHolderAlloc( self.handle, &self.ph ) )
+        try:
+            i = 0
+            for arg in args:
+                self.params[i].set_value(self,arg)
+                i += 1
+            for name in kwargs:
+                self.get_param(name).set_value(self,kwargs[name])
+#            check( TA_GetLookback(self.ph, &lookback ))
+            check( TA_CallFunc(self.ph, startIndex, endIndex, &outbegidx, &outnbelement ) )
+            return( outbegidx, outnbelement )
+        finally:
+            check(TA_ParamHolderFree( self.ph ))
+
+    def set_input_int(self,index,ndarray value):
+        check( TA_SetInputParamIntegerPtr( self.ph, index, <int*>value.data ))
+
+    def set_input_real(self,index,ndarray value):
+        check( TA_SetInputParamRealPtr( self.ph, index, <double*>value.data ))
+
+#    def set_input_price(index,value):
+#        check(TA_SetInputParamPricePtr( TA_ParamHolder *params, unsigned int paramIndex, double *open, double *high, double *low, double *close,double *volume,double *openInterest ))
+
+    def set_opt_int(self,index,value):
+        check(TA_SetOptInputParamInteger( self.ph, index, value))
+
+    def set_opt_real(self,index,value):
+        check(TA_SetOptInputParamReal( self.ph, index,value ))
+
+    def set_out_int(self,index,ndarray value):
+        check(TA_SetOutputParamIntegerPtr(self.ph, index, <int*>value.data ))
+
+    def set_out_real(self,index,ndarray value):
+        check(TA_SetOutputParamRealPtr(self.ph, index, <double*>value.data ))
 
     def __str__(self):
         return self.name + "("+  ",".join( [ str(p) for p in self.params ] ) + ")"
