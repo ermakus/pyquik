@@ -1,8 +1,12 @@
-from trading import Market, MarketListener
+# -*- coding: utf-8 -*-
+import re, traceback, sys
 from order import Order, OrderFactory
 from ticker import Ticker, TickerFactory
 
-import re, traceback, sys
+if sys.platform == "win32":
+    from trading import Market, MarketListener
+else:
+    from tarding_stub import Market, MarketListener
 
 TABLE_TOOLS="tools"
 TABLE_ORDERS="orders"

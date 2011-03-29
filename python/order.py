@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 CLIENT_ACCOUNT="L01-00000F00"
 CLIENT_CODE=52709
 
