@@ -1,6 +1,3 @@
-import numpy
-
-ctypedef int TA_RetCode
 
 cdef extern from "numpy/arrayobject.h":
     ctypedef int intp
@@ -12,6 +9,7 @@ cdef extern from "numpy/arrayobject.h":
         cdef int flags
 
 cdef extern from "ta_common.h":
+    ctypedef int TA_RetCode
     struct TA_StringTable:
         int size
         char** string
@@ -158,7 +156,7 @@ class TA_Param:
         self.flags = flags
 
     def __str__(self):
-        return self.name
+        return self.name.decode("utf-8")
 
 class TA_InParam(TA_Param):
 
@@ -190,7 +188,7 @@ class TA_OptParam(TA_Param):
         raise TA_Exception("Unsupported param type: %s" % self.type )
 
     def __str__(self):
-        return self.name + "=" + str(self.default)
+        return self.name.decode("utf-8") + "=" + str(self.default)
 
 cdef class TA_Func:
 
@@ -230,18 +228,23 @@ cdef class TA_Func:
         raise TA_Exception("Invalid argument: %s" % name )
 
     def __call__(self,startIndex,endIndex,*args,**kwargs):
-        cdef int lookback
         cdef int outbegidx = 0
         cdef int outnbelement = 0
         check( TA_ParamHolderAlloc( self.handle, &self.ph ) )
         try:
-            i = 0
-            for arg in args:
-                self.params[i].set_value(self,arg)
-                i += 1
-            for name in kwargs:
-                self.get_param(name).set_value(self,kwargs[name])
-#            check( TA_GetLookback(self.ph, &lookback ))
+            for i in range( len(self.params) ):
+                param = self.params[i]
+                if i < len(args):
+                    param.set_value(self,args[i])
+                    continue
+                name = param.name.decode("utf-8")  
+                if name in kwargs:
+                    param.set_value(self,kwargs[name])
+                    continue
+                if type(param) == TA_OptParam:
+                    param.set_value(self,param.default)
+                    continue
+                raise TA_Exception("Required argiment not found: %s" % param )
             check( TA_CallFunc(self.ph, startIndex, endIndex, &outbegidx, &outnbelement ) )
             return( outbegidx, outnbelement )
         finally:
@@ -269,7 +272,7 @@ cdef class TA_Func:
         check(TA_SetOutputParamRealPtr(self.ph, index, <double*>value.data ))
 
     def __str__(self):
-        return self.name + "("+  ",".join( [ str(p) for p in self.params ] ) + ")"
+        return self.name.decode("utf-8") + "(" + ",".join( [ str(p) for p in self.params ] ) + ")"
 
 class TA_LIB:
 
@@ -297,13 +300,5 @@ class TA_LIB:
         TA_FuncTableFree( table )
         return names
 
-    def func(self,char* name):
+    def func(self,name):
         return TA_Func( name )
-
-    def MA(self, ndarray inarr, int begIdx=0, int endIdx=-1, int optInTimePeriod=1, int optInMAType=0):
-        cdef int outbegidx = 0
-        cdef int outnbelement = 0
-        cdef ndarray outarr = numpy.zeros_like(inarr)
-        if endIdx < 0: endIdx = inarr.dimensions[0]
-        check( TA_MA(begIdx, endIdx, <double *>inarr.data, optInTimePeriod, optInMAType, &outbegidx, &outnbelement, <double *>outarr.data) )
-        return (outbegidx, outnbelement, outarr)
