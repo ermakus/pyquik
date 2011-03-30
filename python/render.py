@@ -12,13 +12,15 @@ if __name__ == "__main__":
     factory = TickerFactory(None)
     factory.load( sys.argv[1] )
 
+    cut = 30
+
     for name in factory.tickers:
         ticker = factory.ticker( name )
         X = ticker.serie('time').data()
-        ticker.indicator("MA")
+        ticker.indicator("MA", optInTimePeriod=cut )
         for sname in ticker.series:
             if sname in ['price','MA']:
-                pylab.plot(X, ticker.serie(sname).data(), c=cm.summer(0), label=("%s (%s)" % (name, sname)))
+                pylab.plot(X[cut:], ticker.serie(sname).data()[cut:], c=cm.summer(0), label=("%s (%s)" % (name, sname)))
 
     pylab.legend()
     pylab.show()

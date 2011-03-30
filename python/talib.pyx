@@ -301,4 +301,4 @@ class TA_LIB:
         return names
 
     def func(self,name):
-        return TA_Func( name )
+        return TA_Func( name.encode("utf-8") )

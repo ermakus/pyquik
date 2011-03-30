@@ -33,7 +33,7 @@ class TickerTest(unittest.TestCase):
         A = ind.data()
         del( self.ticker.series["MA"] )
         B = self.ticker.indicator("MA").data()
-        for i in range( len(A) ): self.assertEquals( A[i], B[i] )
+        for i in range( len(A) ): self.assertAlmostEqual( A[i], B[i] )
     
 
 if __name__ == '__main__':

@@ -112,15 +112,17 @@ class TickerFactory:
         ticker.tick()
 
     def load(self, filename):
-        fp = file( filename )
+        fp = open( filename )
         try:
-            headers = fp.next().rstrip().split(',')
+            headers = fp.readline().rstrip().split(',')
             IDX_TICKER = headers.index( '<TICKER>' )
             IDX_DATE = headers.index( '<DATE>' )
             IDX_TIME = headers.index( '<TIME>' )
             IDX_LAST = headers.index( '<LAST>' )
             IDX_VOL  = headers.index( '<VOL>' )
-            for line in fp:
+            while True:
+                line = fp.readline()
+                if not line: break
                 row = line.rstrip().split(',')
                 ticker = self.ticker( row[ IDX_TICKER ] )
                 ticker.time = datetime.datetime.strptime(row[ IDX_DATE ]+row[ IDX_TIME ], '%Y%m%d%H%M%S')
