@@ -85,6 +85,8 @@ class Ticker:
         for name in self.series:
             self.series[name].push( getattr( self, name, None ) )
 
+        print(str(self))
+
     def __str__(self):
         return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in (Ticker.FIELDS + Ticker.SERIES) ]  )
 
@@ -102,11 +104,11 @@ class TickerFactory:
         return ticker
 
     def update( self, table, r ):
-        ticker = self.ticker(self, table.getString(r,self.headers.index("Код бумаги")))
+        ticker = self.ticker(table.getString(r,self.headers.index("Код бумаги")))
         if not ticker.classcode:
             ticker.classcode = table.getString(r,self.headers.index("Код класса"))
 
-        ticker.time = datetime.datetime()
+        ticker.time = datetime.datetime.now()
         ticker.price =  float(table.getDouble(r,self.headers.index("Цена послед.")))
         ticker.volume = int(table.getDouble(r,self.headers.index("Оборот")))
         ticker.tick()

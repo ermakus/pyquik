@@ -97,12 +97,9 @@ class Quik(MarketListener):
         if self.market.connect( self.quikPath ):
             raise Exception( self.market.errorMessage() )
 
-        sber = self.handlers[ TABLE_TOOLS ].ticker("SBER03")
-        order = sber.order('NEW_STOP_ORDER')
-        order.execute()
-
-        print( sber )
-        print( order )
+        #sber = self.handlers[ TABLE_TOOLS ].ticker("SBER03")
+        #order = sber.order('NEW_STOP_ORDER')
+        #order.execute()
 
     def run(self):
         try:
