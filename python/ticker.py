@@ -27,9 +27,10 @@ class Serie:
 
 class Indicator(Serie):
 
-    def __init__(self,ticker, name, dtype=numpy.float):
-        Serie.__init__(self,ticker,name,dtype)
+    def __init__(self,ticker, name, **kwargs):
+        Serie.__init__(self,ticker,name)
         self.func = ta_lib.func( name )
+        self.kwa = kwargs
         src = self.ticker.serie("price").data()
         src_len = len(src)
         if src_len:
@@ -42,7 +43,7 @@ class Indicator(Serie):
         Serie.push( self, 0.0 )
         src = self.ticker.serie("price").data()
         idx = self.size-1
-        self.func(idx, idx, src, self.buf[idx:])
+        self.func(idx, idx, src, self.buf[idx:], **self.kwa)
  
 class Ticker:
 
@@ -67,10 +68,10 @@ class Ticker:
         serie = self.series[name] = Serie( self, name )
         return serie
 
-    def indicator(self,name):
+    def indicator(self,name, **kwargs):
         if name in self.series:
             return self.series[name]
-        serie = self.series[name] = Indicator( self, name )
+        serie = self.series[name] = Indicator( self, name, **kwargs )
         return serie
 
     def order(self,action):
