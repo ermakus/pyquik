@@ -6,7 +6,7 @@ from ticker import Ticker, TickerFactory
 if sys.platform == "win32":
     from trading import Market, MarketListener
 else:
-    from tarding_stub import Market, MarketListener
+    from trading_stub import Market, MarketListener
 
 TABLE_TOOLS="tools"
 TABLE_ORDERS="orders"
@@ -21,8 +21,8 @@ class Quik(MarketListener):
 
     def __init__(self, quikPath ):
         MarketListener.__init__(self)
-        self.handlers[ TABLE_TOOLS ]      = TickerFactory( self )
-        self.handlers[ TABLE_STOP_ORDERS ] = OrderFactory( self )
+        self.tickers = self.handlers[ TABLE_TOOLS ] = TickerFactory( self )
+        self.orders = self.handlers[ TABLE_STOP_ORDERS ] = OrderFactory( self )
         self.market = Market()
         self.market.setDebug( True )
         self.market.addListener( self )

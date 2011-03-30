@@ -61,6 +61,15 @@ class Order:
     def __str__(self):
         return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in Order.FIELDS ] )
 
+class BuyOrder(Order):
+    pass
+
+class SellOrder(Order):
+    pass
+
+class StopLossOrder(Order):
+    pass
+
 class OrderFactory:
 
     def __init__(self, quik):
