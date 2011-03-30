@@ -241,7 +241,7 @@ cdef class TA_Func:
                 if name in kwargs:
                     param.set_value(self,kwargs[name])
                     continue
-                if type(param) == TA_OptParam:
+                if isinstance( param, TA_OptParam ):
                     param.set_value(self,param.default)
                     continue
                 raise TA_Exception("Required argiment not found: %s" % param )

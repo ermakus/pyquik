@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 from order import Order
+from talib import TA_LIB, TA_Func
 import numpy,datetime
 
+
+ta_lib = TA_LIB()
 
 class Serie:
 
@@ -21,6 +24,25 @@ class Serie:
 
     def data(self):
         return self.buf[:self.size]
+
+class Indicator(Serie):
+
+    def __init__(self,ticker, name, dtype=numpy.float):
+        Serie.__init__(self,ticker,name,dtype)
+        self.func = ta_lib.func( name )
+        src = self.ticker.serie("price").data()
+        src_len = len(src)
+        if src_len:
+            self.buf.resize( src_len )
+            self.size = src_len
+            shift, num = self.func(0, src_len-1, src, self.buf)
+            self.buf = numpy.roll( self.buf, shift )
+
+    def push(self,value):
+        Serie.push( self, 0.0 )
+        src = self.ticker.serie("price").data()
+        idx = self.size-1
+        self.func(idx, idx, src, self.buf[idx:])
  
 class Ticker:
 
@@ -45,6 +67,12 @@ class Ticker:
         serie = self.series[name] = Serie( self, name )
         return serie
 
+    def indicator(self,name):
+        if name in self.series:
+            return self.series[name]
+        serie = self.series[name] = Indicator( self, name )
+        return serie
+
     def order(self,action):
         o = Order(self,action)
         o.seccode = self.seccode
@@ -53,7 +81,7 @@ class Ticker:
         return o
 
     def tick(self):
-        for name in Ticker.SERIES:
+        for name in self.series:
             self.series[name].push( getattr( self, name, None ) )
 
     def __str__(self):
