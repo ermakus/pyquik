@@ -31,7 +31,7 @@ class Indicator(Serie):
         Serie.__init__(self,ticker,name)
         self.func = ta_lib.func( name )
         self.kwa = kwargs
-        src = self.ticker.serie("price").data()
+        src = self.ticker("price").data()
         src_len = len(src)
         if src_len:
             self.buf.resize( src_len )
@@ -41,9 +41,10 @@ class Indicator(Serie):
 
     def push(self,value):
         Serie.push( self, 0.0 )
-        src = self.ticker.serie("price").data()
+        src = self.ticker("price").data()
         idx = self.size-1
         self.func(idx, idx, src, self.buf[idx:], **self.kwa)
+
  
 class Ticker:
 
@@ -62,13 +63,7 @@ class Ticker:
     def __iter__(self):
         return serie.__iter__()
 
-    def serie(self,name):
-        if name in self.series:
-            return self.series[name]
-        serie = self.series[name] = Serie( self, name )
-        return serie
-
-    def indicator(self,name, **kwargs):
+    def __call__(self,name,stype=Serie, **kwargs):
         if name in self.series:
             return self.series[name]
         serie = self.series[name] = Indicator( self, name, **kwargs )
@@ -85,8 +80,6 @@ class Ticker:
         for name in self.series:
             self.series[name].push( getattr( self, name, None ) )
 
-        print(str(self))
-
     def __str__(self):
         return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in (Ticker.FIELDS + Ticker.SERIES) ]  )
 
@@ -97,14 +90,14 @@ class TickerFactory:
         self.tickers = {}
         self.headers = False
 
-    def ticker(self, name):
+    def __call__(self, name):
         if name in self.tickers:
             return self.tickers[ name ]
         ticker = self.tickers[ name ] = Ticker( self, name )
         return ticker
 
     def update( self, table, r ):
-        ticker = self.ticker(table.getString(r,self.headers.index("Код бумаги")))
+        ticker = self(table.getString(r,self.headers.index("Код бумаги")))
         if not ticker.classcode:
             ticker.classcode = table.getString(r,self.headers.index("Код класса"))
 
@@ -126,11 +119,10 @@ class TickerFactory:
                 line = fp.readline()
                 if not line: break
                 row = line.rstrip().split(',')
-                ticker = self.ticker( row[ IDX_TICKER ] )
+                ticker = self( row[ IDX_TICKER ] )
                 ticker.time = datetime.datetime.strptime(row[ IDX_DATE ]+row[ IDX_TIME ], '%Y%m%d%H%M%S')
                 ticker.price = float(row[ IDX_LAST ])
                 ticker.volume = float(row[ IDX_VOL ])
                 ticker.tick()
         finally:
             fp.close()
-

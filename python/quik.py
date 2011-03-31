@@ -27,6 +27,7 @@ class Quik(MarketListener):
         self.market.setDebug( True )
         self.market.addListener( self )
         self.quikPath = quikPath
+        self.ready = False
 
     def __del__(self):
         self.market.disconnect()
@@ -74,8 +75,9 @@ class Quik(MarketListener):
                     for h in self.handlers:
                         if self.handlers[ h ].headers: 
                             wait -= 1
-                    if wait == 0: 
-                        self.onDataReady()
+                    if wait == 0:
+                        if not self.ready: self.onDataReady()
+                        self.ready = True
 
        except:
             traceback.print_exc(file=sys.stdout)
@@ -93,7 +95,7 @@ class Quik(MarketListener):
             traceback.print_exc(file=sys.stdout)
 
     def onDataReady(self):
-        print("Data is ready - connecting")
+        print("*** DATA READY ***")
         if self.market.connect( self.quikPath ):
             raise Exception( self.market.errorMessage() )
 
@@ -104,12 +106,18 @@ class Quik(MarketListener):
     def run(self):
         try:
             import win32gui
-            hwnd = win32gui.FindWindow( "InfoClass", "[bcst2709  UID: 54622] Информационно-торговая система QUIK (версия 5.17.0.165)" )
-            if hwnd:
+            def callback (hwnd, hwnds):
+                if win32gui.IsWindowVisible (hwnd) and win32gui.IsWindowEnabled (hwnd):
+                    title = win32gui.GetWindowText(hwnd)
+                    if "Информационно-торговая система QUIK" in title: hwnds.append (hwnd)
+                return True
+            hwnds = []
+            win32gui.EnumWindows (callback, hwnds)
+            if not hwnds: 
+                raise Exception("Quik window not found")
+            for hwnd in hwnds:
                 win32gui.PostMessage( hwnd, 0x111, 0x0015C, 0x00 ) # WM_COMMAND 'Stop DDE export'
                 win32gui.PostMessage( hwnd, 0x111, 0x1013F, 0x00 ) # WM_COMMAND 'Start DDE export'
-            else:
-                raise Exception("Quik window not found")
         except Exception as ex:
             print("Can't autostart DDE export (%s). Swich to Quik and press Ctrl+Shift+L to start" % ex)
 

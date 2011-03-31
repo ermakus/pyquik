@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import numpy, pylab, sys
-from ticker import TickerFactory
+from ticker import TickerFactory, Indicator
 import matplotlib.cm as cm
 
 if __name__ == "__main__":
@@ -15,12 +15,12 @@ if __name__ == "__main__":
     cut = 30
 
     for name in factory.tickers:
-        ticker = factory.ticker( name )
-        X = ticker.serie('time').data()
-        ticker.indicator("MA", optInTimePeriod=cut )
+        ticker = factory( name )
+        X = ticker('time').data()
+        ticker("MA", Indicator, optInTimePeriod=cut )
         for sname in ticker.series:
             if sname in ['price','MA']:
-                pylab.plot(X[cut:], ticker.serie(sname).data()[cut:], c=cm.summer(0), label=("%s (%s)" % (name, sname)))
+                pylab.plot(X[cut:], ticker(sname).data()[cut:], c=cm.summer(0), label=("%s (%s)" % (name, sname)))
 
     pylab.legend()
     pylab.show()
