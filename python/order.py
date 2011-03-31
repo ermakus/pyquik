@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
+import logging
+log = logging.getLogger("order")
 
 CLIENT_ACCOUNT="L01-00000F00"
 CLIENT_CODE=52709
+
+MARKET_PRICE=0
+BUY="B"
+SELL="S"
 
 class Order:
 
@@ -27,48 +33,50 @@ class Order:
 	SET_FUT_LIMIT - новое ограничение по фьючерсному счету
     """
 
-    LAST_ID = 1
+    LAST_ID = 0
 
-    FIELDS =['trans_id','action','seccode','classcode','account','client_code','operation','quantity','stopprice','price','expiry_date']
-
-    ORDERS = {}
-
-    def __init__(self,ticker,action="NEW_STOP_ORDER"):
+    def __init__(self,ticker, operation=BUY, price=MARKET_PRICE, quantity=1):
         Order.LAST_ID +=1
         self.ticker = ticker
         self.trans_id = Order.LAST_ID
-        self.action = action
-        self.seccode=None
-        self.classcode=None
         self.account = CLIENT_ACCOUNT
         self.client_code = CLIENT_CODE
-        self.operation = "S"
-        self.quantity = 1
+        self.operation = operation
+        self.price = price
+        self.quantity = quantity
+        self.seccode = ticker.seccode
+        self.classcode = ticker.classcode
+        self.order_key = None
+
+    def fields(self):
+        return ['trans_id','seccode','classcode','account','client_code','operation','quantity']
+
+    def cmd_submit(self):
+        return "ACTION=NEW_ORDER;" + ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in self.fields() ] ) + (';PRICE=%.2f' % self.price)
+
+    def cmd_kill(self):
+        Order.LAST_ID +=1
+        if not self.order_key: raise Exception("Can't kill unregistered order")
+        return ("ACTION=KILL_ORDER;TRANS_ID=%s;" % Order.LAST_ID) + ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in['seccode','classcode','order_key'] ] )
+ 
+    def submit(self):
+        self.ticker.factory.quik.execute( self.cmd_submit(), self )
+
+    def kill(self):
+        self.ticker.factory.quik.execute( self.cmd_kill(), self )
+
+    def __repr__(self):
+        return "ORDER_KEY=%s;%s" % ( self.order_key, self.cmd_submit())
+
+class StopOrder(Order):
+
+    def __init__(self,ticker, operation=BUY, price=MARKET_PRICE, quantity=1):
+        Order.__init__(self, ticker, operation, price, quantity)
         self.stopprice=100.0
-        self.price=100.0
         self.expiry_date="20110401"
-        Order.ORDERS[ self.trans_id ] = self
 
-    def execute(self):
-        if self.ticker.factory.quik.market.sendAsync( str( self ) ):
-            raise Exception( self.ticker.factory.market.errorMessage() )
-
-    def executed(self, result, status, serverId):
-        self.server_id = serverId
-        self.status = status
-        print( "Order %s/%s result %s/%s" % ( self.trans_id, self.server_id, result, status ) )
-
-    def __str__(self):
-        return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in Order.FIELDS ] )
-
-class BuyOrder(Order):
-    pass
-
-class SellOrder(Order):
-    pass
-
-class StopLossOrder(Order):
-    pass
+    def fields(self):
+        return Order.fields() + ['stopprice','expiry_date']
 
 class OrderFactory:
 
@@ -77,9 +85,16 @@ class OrderFactory:
         self.headers = False
         self.orders = {}
 
+    OP_TYPE = {"Купля":BUY,"Продажа":SELL}
+
     def update( self, table, row ):
-        order = Order(self)
-        order.server_id = int(table.getDouble(row,self.headers.index("Номер")))
-        self.orders[ order.server_id ] = order
-        print( order )
+        ticker    = self.quik.TICKERS(table.getString(row,self.headers.index("Код бумаги")))
+        op        = OrderFactory.OP_TYPE[table.getString(row,self.headers.index("Операция"))]
+        price     = float(table.getDouble(row,self.headers.index("Цена")))
+        quantity  = int(table.getDouble(row,self.headers.index("Кол-во")))
+        order     = Order(ticker,op,price,quantity)
+        order.order_key = int(table.getDouble(row,self.headers.index("Номер")))
+        self.orders[ order.order_key ] = order
+        if hasattr( self.quik, "onOrder" ):
+            self.quik.onOrder( order )
 

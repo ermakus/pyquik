@@ -2,15 +2,14 @@
 import re, traceback, sys
 from order import Order, OrderFactory
 from ticker import Ticker, TickerFactory
+from trading import Market, MarketListener
+import os, logging
 
-if sys.platform == "win32":
-    from trading import Market, MarketListener
-else:
-    from trading_stub import Market, MarketListener
+# Setup logging
+logging.basicConfig(level=logging.DEBUG)
 
-TABLE_TOOLS="tools"
-TABLE_ORDERS="orders"
-TABLE_STOP_ORDERS="stop_orders"
+log = logging.getLogger("quik")
+log.debug("Log configured")
 
 class Quik(MarketListener):
 
@@ -21,8 +20,8 @@ class Quik(MarketListener):
 
     def __init__(self, quikPath ):
         MarketListener.__init__(self)
-        self.tickers = self.handlers[ TABLE_TOOLS ] = TickerFactory( self )
-        self.orders = self.handlers[ TABLE_STOP_ORDERS ] = OrderFactory( self )
+        self.handlers[ "TICKERS" ] = TickerFactory( self )
+        self.handlers[ "ORDERS" ] = OrderFactory( self )
         self.market = Market()
         self.market.setDebug( True )
         self.market.addListener( self )
@@ -32,7 +31,9 @@ class Quik(MarketListener):
     def __del__(self):
         self.market.disconnect()
         self.market.removeListener( self )
-        print("Diconnected")
+
+    def __getattr__(self,name):
+        return self.handlers[name]
 
     def onTableData(self, topic, item, table): 
        try:
@@ -53,7 +54,6 @@ class Quik(MarketListener):
 
             if table.cols() != cols or table.rows() != rows:
                 raise Exception( "Table data don't match item format")
-
             if title in self.handlers:
                 handler = self.handlers[ title ]
                 # Init table header
@@ -83,25 +83,27 @@ class Quik(MarketListener):
             traceback.print_exc(file=sys.stdout)
 
     def onConnected(self):
-        print("Connected to server")
+        log.info("Connected to server")
 
     def onDisconnected(self):
-        print("Disconnected from server")
+        log.error("Disconnected from server")
 
     def onTransactionResult(self,result, errorCode, replyCode, transId, orderNum, replyMessage):
         try:
-            Order.ORDERS[ transId ].executed( errorCode, replyCode, int(orderNum) )
+            log.debug("TRANS-RESULT ID=%s ERROR_CODE=%s REPLY_CODE=%s ORDER_NUM=%s" % ( transId, errorCode, replyCode, orderNum ) )
         except:
             traceback.print_exc(file=sys.stdout)
 
     def onDataReady(self):
-        print("*** DATA READY ***")
-        if self.market.connect( self.quikPath ):
-            raise Exception( self.market.errorMessage() )
+        log.info("Initail data loaded")
+        sber = self.TICKERS.SBER03
+        assert sber.price > 1
+        o = sber.buy( sber.price / 2, 1 )
 
-        #sber = self.handlers[ TABLE_TOOLS ].ticker("SBER03")
-        #order = sber.order('NEW_STOP_ORDER')
-        #order.execute()
+    def execute(self, cmd, order):
+        log.debug("EXECUTE: %s" % cmd )
+        if self.market.sendAsync( cmd ):
+            raise Exception( self.market.errorMessage() )
 
     def run(self):
         try:
@@ -116,16 +118,25 @@ class Quik(MarketListener):
             if not hwnds: 
                 raise Exception("Quik window not found")
             for hwnd in hwnds:
+                log.debug("Starting DDE export")
                 win32gui.PostMessage( hwnd, 0x111, 0x0015C, 0x00 ) # WM_COMMAND 'Stop DDE export'
                 win32gui.PostMessage( hwnd, 0x111, 0x1013F, 0x00 ) # WM_COMMAND 'Start DDE export'
         except Exception as ex:
-            print("Can't autostart DDE export (%s). Swich to Quik and press Ctrl+Shift+L to start" % ex)
+            log.warn("Can't autostart DDE export (%s). Swich to Quik and press Ctrl+Shift+L to start" % ex)
 
         self.market.run()
 
+    def onOrder(self,order):
+        log.debug( "Order: %s" % order )
+
+    def onTicker(self,ticker):
+        #log.debug( "Ticker: %s" % ticker )
+        pass
+
 if __name__ == "__main__":
 
-    quik = Quik("c:\\quik")
-
+    quik = Quik("c:\\quik-bcs")
+    if quik.market.connect( quik.quikPath ):
+        raise Exception( self.market.errorMessage() )
     quik.run()
 

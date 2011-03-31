@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from order import Order
+from order import Order, BUY, SELL, MARKET_PRICE
 from talib import TA_LIB, TA_Func
 import numpy,datetime
 
@@ -57,6 +57,7 @@ class Ticker:
         self.seccode = name
         self.classcode = False
         self.series = {}
+        self.orders = []
         for name in Ticker.SERIES:
             self.series[ name ] = Serie(self,name,dtype=(numpy.float if name != 'time' else datetime.datetime))
 
@@ -69,18 +70,23 @@ class Ticker:
         serie = self.series[name] = Indicator( self, name, **kwargs )
         return serie
 
-    def order(self,action):
-        o = Order(self,action)
-        o.seccode = self.seccode
-        o.classcode = self.classcode
-        o.price = self.price
+    def buy(self,price=MARKET_PRICE,quantity=1):
+        o = Order(self,BUY, price, quantity)
+        self.orders.append(o)
+        o.submit()
+        return o
+
+    def sell(self,price=MARKET_PRICE,quantity=1):
+        o = Order(self, SELL, price, quantity)
+        self.orders.append(o)
+        o.submit()
         return o
 
     def tick(self):
         for name in self.series:
             self.series[name].push( getattr( self, name, None ) )
 
-    def __str__(self):
+    def __repr__(self):
         return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in (Ticker.FIELDS + Ticker.SERIES) ]  )
 
 class TickerFactory:
@@ -91,6 +97,9 @@ class TickerFactory:
         self.headers = False
 
     def __call__(self, name):
+        return self.__getattr__(name)
+
+    def __getattr__(self, name):
         if name in self.tickers:
             return self.tickers[ name ]
         ticker = self.tickers[ name ] = Ticker( self, name )
@@ -105,6 +114,8 @@ class TickerFactory:
         ticker.price =  float(table.getDouble(r,self.headers.index("Цена послед.")))
         ticker.volume = int(table.getDouble(r,self.headers.index("Оборот")))
         ticker.tick()
+        if hasattr( self.quik, "onTicker" ):
+            self.quik.onTicker( ticker )
 
     def load(self, filename):
         fp = open( filename )
