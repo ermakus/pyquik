@@ -277,6 +277,11 @@ void Market::onTransactionResult(long nTransactionResult, long nTransactionExten
 {
     MarketEvent event;
     event.type = ET_TRANS;
+    event.result = nTransactionResult;
+    event.errorCode = nTransactionExtendedErrorCode;
+    event.reply = nTransactionReplyCode;
+    event.tid = dwTransId;
+    event.order = dOrderNum;
     m_Callback( &event );
 }
 

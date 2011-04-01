@@ -1,4 +1,7 @@
-import re, traceback, sys
+# -*- coding: utf-8 -*-
+import re, traceback, sys, logging
+
+log = logging.getLogger("quik")
 
 cdef extern from "quikdde.h":
     cdef cppclass Table:
@@ -17,6 +20,11 @@ cdef extern from "quikdde.h":
         char* topic
         char* item
         Table* table
+        long result
+        long errorCode
+        long reply
+        unsigned long tid
+        double order
         
     cdef cppclass Market:
         Market(void(*callback)(MarketEvent*))
@@ -48,6 +56,9 @@ cdef class Quik:
     cdef bytes ddename
     cdef int   ready
     cdef dict  handl
+    cdef bytes last_cmd
+    cdef bytes last_error
+    cdef list  callbacks
 
     def __init__(self,path, ddename):
         global quik
@@ -59,6 +70,7 @@ cdef class Quik:
         self.ddename = ddename.encode("utf-8")
         self.ready = 0
         self.handl = dict()
+        self.callbacks = list()
 
         if self.market.ddeConnect(self.ddename):
             raise Exception( self.error() )
@@ -81,26 +93,58 @@ cdef class Quik:
         return self.ready
 
     def error(self):
-        return self.market.errorMessage()
+        self.last_error = self.market.errorMessage();
+        return self.last_error.decode("utf-8")
+
+    def execute(self,cmd,callback=None):
+        self.last_cmd = cmd.encode("utf-8")
+        self.callbacks.append( callback )
+        self.market.sendAsync( self.last_cmd )
 
     def run(self):
+        try:
+            import win32gui
+            def callback (hwnd, hwnds):
+                if win32gui.IsWindowVisible (hwnd) and win32gui.IsWindowEnabled (hwnd):
+                    title = win32gui.GetWindowText(hwnd)
+                    if "Информационно-торговая система QUIK" in title: hwnds.append (hwnd)
+                return True
+            hwnds = []
+            win32gui.EnumWindows (callback, hwnds)
+            if not hwnds: 
+                raise Exception("Quik window not found")
+            for hwnd in hwnds:
+                log.debug("Starting DDE export")
+                win32gui.PostMessage( hwnd, 0x111, 0x0015C, 0x00 ) # WM_COMMAND 'Stop DDE export'
+                win32gui.PostMessage( hwnd, 0x111, 0x1013F, 0x00 ) # WM_COMMAND 'Start DDE export'
+        except Exception as ex:
+            log.warn("Can't autostart DDE export (%s). Swich to Quik and press Ctrl+Shift+L to start" % ex)
+
         self.market.run()
 
     def onDataReady(self):
         if self.ready:
-            print( "Import restarted" )
+            self.onRestart()
         else:
             self.ready = 1
-            print( "Data ready" )
+            self.onReady()
+
+    def onReady(self):
+        log.info( "DDE data ready" )
+
+    def onRestart(self):
+        log.info( "DDE export restarted" )
 
     def onConnect( self ):
-        print( "Connected" )
+        log.info( "Connected" )
 
     def onDisconnect( self ):
-        print( "Disconnected" )
+        log.info( "Disconnected" )
 
-    def onTrans( self ):
-        print( "Transaction" )
+    def onTrans( self, result, errorCode, reply, tid, order ):
+        cb = self.callbacks.pop(0)
+        log.info( "Transaction: res=%s err=%s reply=%s tid=%s order=%s msg=%s" % ( result, errorCode, reply, tid, order, self.error() ) )
+        if cb: cb( result, errorCode, reply, tid, order, self.error() )
 
 RE_TOPIC = re.compile("\\[(.*)\\](.*)");
 RE_ITEM  = re.compile("R(\\d*)C(\\d*):R(\\d*)C(\\d*)");
@@ -181,5 +225,4 @@ cdef void quik_onEvent( MarketEvent* event ):
     if event.type == ET_CONNECT: quik.onConnect()
     if event.type == ET_DISCONNECT: quik.onDisconnect()
     if event.type == ET_DATA: quik_onData( event.topic, event.item, event.table )
-    if event.type == ET_TRANS: quik.onTrans()
-
+    if event.type == ET_TRANS: quik.onTrans( event.result, event.errorCode, event.reply, event.tid, event.order )
