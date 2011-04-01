@@ -1,8 +1,13 @@
-#pragma once
-#include <windows.h>
-#include "table.h"
+#ifndef MARKET_H
+#define MARKET_H
 
-class CMarketServer;
+#include <windows.h>
+
+#include <list>
+#include <string>
+#include <ddeml.h>
+
+#include "table.h"
 
 class Table {
 
@@ -25,47 +30,60 @@ public:
 	void		setDouble(int r, int c, double val);
 };
 
-class MarketListener {
-public:
-	MarketListener() {}
-	virtual ~MarketListener() {}
-	virtual void onTableData( const char* topic, const char* item, Table* table ) {};
-	virtual void onConnected() {};
-	virtual void onDisconnected() {};
-	virtual void onTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum, std::string message) {}
+typedef enum {
+    ET_CONNECT,
+    ET_DISCONNECT,
+    ET_DATA,
+    ET_TRANS
+} MarketEventType;
+
+struct MarketEvent
+{
+    MarketEventType  type;
+    const char*   topic;
+    const char*   item;
+    Table*  table;
+    long    result;
+    long    errorCode;
+    long    reply;
+    unsigned long tid;
+    double order;
 };
 
-class Market {
+typedef void (*MarketCallback)(MarketEvent* evt);
 
-  CMarketServer* m_pDataSource;
-  DWORD		 m_dwThreadId;
-  long		 m_nExtendedErrorCode;
-  long		 m_nResult;
-
+class Market 
+{
+  friend HDDEDATA CALLBACK DDE_Callback(UINT uType, UINT uFmt, HCONV hConv, HSZ hsz1, HSZ hsz2, HDDEDATA hData, DWORD dwData1, DWORD dwData2);
 public:
-  Market();
+  Market(MarketCallback callback);
   virtual ~Market();
-
-  virtual void addListener( MarketListener* pListener );
-  virtual void removeListener( MarketListener* pListener );
-
-  virtual void run();
-  virtual void stop();
 
   virtual long connect(const char* quickDir);
   virtual long disconnect();
-
   virtual long sendAsync(const char* trans);
 
-  virtual void setDebug(bool enabled);
+  virtual long ddeConnect(const char* serverName);
+  virtual void ddeDisconnect();
+  virtual void run();
+  virtual void stop();
 
-  virtual std::string errorMessage();
-  virtual long        errorCode() { return m_nExtendedErrorCode; }
+  virtual const char* errorMessage();
 
+  virtual void onConnected();
+  virtual void onDisconnected();
+  virtual void onTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum);
+  virtual void onTableData( const char* topic, const char* item, Table* table );
 
+private:
+  DWORD		  m_dwThreadId;
+  long		  m_nResult;
+  DWORD       m_dwInst;
+  HSZ         m_hszService;
+   
+  MarketCallback m_Callback;
+  BOOL ParseData(Table& table, PBYTE data, DWORD length);
 };
 
 
-
-
-  
+#endif
