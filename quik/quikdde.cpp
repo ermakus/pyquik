@@ -1,6 +1,5 @@
-#include "market.h"
+#include "quikdde.h"
 #include "trans2quik_api.h"
-#include <stdio.h>
 
 static DWORD	      s_dwThreadId = 0;
 static Market*        s_pMarket = NULL;
@@ -72,7 +71,6 @@ HDDEDATA CALLBACK DDE_Callback(UINT uType, UINT uFmt, HCONV hConv, HSZ hsz1, HSZ
 			CHAR topic[200], item[200];
 		    DdeQueryStringA(s_pMarket->m_dwInst,hsz1,topic,200,CP_WINANSI);
 		    DdeQueryStringA(s_pMarket->m_dwInst,hsz2,item,200,CP_WINANSI);
-            printf("DDE Topic: %s Item: %s\n", topic, item );
             DWORD length = DdeGetData(hData, NULL, 0, 0);
             if (length > 8)
             {
@@ -80,7 +78,7 @@ HDDEDATA CALLBACK DDE_Callback(UINT uType, UINT uFmt, HCONV hConv, HSZ hsz1, HSZ
                 DdeGetData(hData,data,length,0);
 	            Table table;
 	            s_pMarket->ParseData( table, data, length );
-		        s_pMarket->onTableData( topic, item, &table );
+		        s_pMarket->onTableData( (char*)cp1251_to_utf8(topic).c_str(), (char*)cp1251_to_utf8(item).c_str(), &table );
                 delete[] data;
             }
 	        return((HDDEDATA)DDE_FACK); 
@@ -249,7 +247,7 @@ void Market::ddeDisconnect()
 	}
 }
   
-void Market::onTableData( const char* topic, const char* item, Table* table )
+void Market::onTableData( char* topic, char* item, Table* table )
 {
     MarketEvent event;
     event.type = ET_DATA;
@@ -546,8 +544,9 @@ int Table::cols() {
 int Table::rows() { 
 	return stable.rows; 
 }
-std::string Table::getString(int r, int c) {
-	return stable[r][c].c_str();
+
+char* Table::getString(int r, int c) {
+	return (char*)stable[r][c].c_str();
 }
 
 double Table::getDouble(int r, int c) {

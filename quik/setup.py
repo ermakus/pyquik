@@ -3,9 +3,9 @@ from distutils.core import setup, Extension
 from distutils.sysconfig import get_python_lib
 from Cython.Distutils import build_ext
 
-sources = ["market.cpp","qdde.pyx"]
+sources = ["quikdde.cpp","quik.pyx"]
 
-ext = Extension("qdde", sources,
+ext = Extension("quik", sources,
                 include_dirs = [os.path.join(get_python_lib(), "win32", "Include")],
                 library_dirs = [os.path.join(get_python_lib(), "win32", "Libs"),"."],
                 language="c++",
@@ -13,7 +13,7 @@ ext = Extension("qdde", sources,
                 )
 
 setup(
-    name="DDE server for Quik", 
+    name="Quik python interface",
     version="1.0",
     ext_modules=[ext],
     cmdclass = {'build_ext':build_ext}

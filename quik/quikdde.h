@@ -2,12 +2,39 @@
 #define MARKET_H
 
 #include <windows.h>
+#include <ddeml.h>
 
 #include <list>
 #include <string>
-#include <ddeml.h>
+#include <vector>
 
-#include "table.h"
+using std::string;
+using std::vector;
+
+template<typename T> 
+class TableData : public vector< vector< T > > {
+
+public:
+	DWORD rows;
+	DWORD cols;
+	
+	TableData() : rows(0), cols(0) {
+	}
+
+	void init(DWORD r, DWORD c, const T& s) {
+		assign(r, std::vector< T >(c,s));
+		rows = r;
+		cols = c;
+	}
+
+	void reset() {
+		this->clear();
+		rows = cols = 0;
+	}
+};
+
+typedef TableData<string> TableDataString;
+typedef TableData<double> TableDataDouble;
 
 class Table {
 
@@ -24,7 +51,7 @@ public:
 	int cols();
 	int rows();
 
-	std::string getString(int r, int c);
+	char* getString(int r, int c);
 	double		getDouble(int r, int c);
 	void		setString(int r, int c, std::string val);
 	void		setDouble(int r, int c, double val);
@@ -40,8 +67,8 @@ typedef enum {
 struct MarketEvent
 {
     MarketEventType  type;
-    const char*   topic;
-    const char*   item;
+    char*   topic;
+    char*   item;
     Table*  table;
     long    result;
     long    errorCode;
@@ -73,7 +100,7 @@ public:
   virtual void onConnected();
   virtual void onDisconnected();
   virtual void onTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum);
-  virtual void onTableData( const char* topic, const char* item, Table* table );
+  virtual void onTableData( char* topic, char* item, Table* table );
 
 private:
   DWORD		  m_dwThreadId;
