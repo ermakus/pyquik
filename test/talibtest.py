@@ -1,5 +1,5 @@
 import unittest
-import talib
+from talib import talib
 from numpy import array,zeros_like
 
 class TA_LIB_Test(unittest.TestCase):

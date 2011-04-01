@@ -1,6 +1,6 @@
 import unittest, datetime
-from ticker import *
-from order import *
+from trading.ticker import *
+from trading.order import *
 
 class TestQuik:
     

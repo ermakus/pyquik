@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from order import Order, BUY, SELL, MARKET_PRICE
-from talib import TA_LIB, TA_Func
+from .order import Order, BUY, SELL, MARKET_PRICE
+from talib.talib import TA_LIB, TA_Func
 import numpy,datetime
 
 

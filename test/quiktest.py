@@ -1,10 +1,11 @@
-import unittest
-from quik import Quik
+import unittest,sys
+sys.path.insert(0, '.')
+from quik import quik
 
 class QDDETest(unittest.TestCase):
 
     def setUp(self):
-        self.quik = Quik("C:\\quik-bcs","QuikDDE")
+        self.quik = quik.Quik("C:\\quik-bcs","QuikDDE")
         self.quik.register( "TICKERS",{"code":"Код бумаги","name":"Бумага","price":"Цена послед."}, lambda x: print(x) )
 
     def testRun(self):
