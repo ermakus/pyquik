@@ -1,35 +1,69 @@
 #ifndef _MYSERV_
 #define _MYSERV_
 
-#define DDE_SERVER_NAME TEXT("QuikDDE")
+#include <windows.h>
 
 #include <list>
+#include <string>
+#include <ddeml.h>
 
 #include "market.h"
 #include "table.h"
-#include "dde.h"
 
-class CMarketServer : public CDDEServer
+class CMarketServer 
 {
+    friend HDDEDATA CALLBACK DDE_Callback(UINT uType, UINT uFmt, HCONV hConv, HSZ hsz1, HSZ hsz2, HDDEDATA hData, DWORD dwData1, DWORD dwData2);
 public:
-    CMarketServer();
+    CMarketServer(std::string name);
     virtual ~CMarketServer();
-
-	virtual void Shutdown(int flags = 0);
-    virtual BOOL OnCreate();
-	virtual BOOL Poke(UINT wFmt, LPCTSTR pszTopic, LPCTSTR pszItem, void* pData, DWORD dwSize);
-	BOOL PokeCache(LPCTSTR pszTopic, void* pData, DWORD dwSize);
 
 	typedef std::list<MarketListener*> MarketListeners;
 
+	virtual bool Connect();
+	virtual void Disconnect();
+
 	virtual void OnConnected();
 	virtual void OnDisconnected();
-	virtual void OnTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum, const char* lpcstrTransactionReplyMessage);
+	virtual void OnTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, 
+                                     double dOrderNum, const char* lpcstrTransactionReplyMessage);
+
+	std::string m_strName;
+	DWORD       m_dwInst;
+	HSZ         m_hszService;
 
 	MarketListeners m_listeners;
-protected:
 	BOOL ParseData(Table& table, PBYTE data, DWORD length);
 };
 
 
-#endif // _MYSERV_
+static std::string cp1251_to_utf8(const char *str)
+{
+	std::string res;	
+	int result_u, result_c;
+	result_u = MultiByteToWideChar(1251,0,str,-1,0,0);
+	if (!result_u) return 0;
+	wchar_t *ures = new wchar_t[result_u];
+	if(!MultiByteToWideChar(1251,0,str,-1,ures,result_u))
+	{
+		delete[] ures;
+		return 0;
+	}
+	result_c = WideCharToMultiByte(CP_UTF8,0,ures,-1,0,0,0, 0);
+	if(!result_c)
+	{
+		delete [] ures;
+		return 0;
+	}
+	char *cres = new char[result_c];
+	if(!WideCharToMultiByte(CP_UTF8,0,ures,-1,cres,result_c,0, 0))
+	{
+		delete[] cres;
+		return 0;
+	}
+	delete[] ures;
+	res.append(cres);
+	delete[] cres;
+	return res;
+}
+
+#endif

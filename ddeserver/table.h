@@ -23,7 +23,7 @@ public:
 	}
 
 	void reset() {
-		clear();
+		this->clear();
 		rows = cols = 0;
 	}
 };

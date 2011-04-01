@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "serv.h"
 #include "market.h"
 #include "trans2quik_api.h"
@@ -43,15 +42,15 @@ extern "C" void __stdcall TRANS2QUIK_TransactionsReplyCallback (long nTransactio
 	}
 }
 
-Market::Market() : m_pDataSource( new CMarketServer() ) {
+Market::Market() : m_pDataSource( new CMarketServer("excel") ) {
 	s_pMarketServer = m_pDataSource;
 	s_szErrorMessage[0] = 0;
 	m_nResult = m_nExtendedErrorCode = 0;
-	m_pDataSource->Create( DDE_SERVER_NAME );
+	m_pDataSource->Connect();
 }
 
 Market::~Market() {
-	m_pDataSource->Shutdown();
+	m_pDataSource->Disconnect();
 	delete m_pDataSource;
 }
 
@@ -98,10 +97,7 @@ long Market::sendAsync(const char* trans) {
 void Market::run() 
 {
 	s_dwThreadId = m_dwThreadId = ::GetCurrentThreadId();
-	if(SetConsoleCtrlHandler( (PHANDLER_ROUTINE)ConsoleHandler,TRUE)==FALSE)
-    {
-        ASSERT("Unable to install handler" == 0);
-    }
+	SetConsoleCtrlHandler( (PHANDLER_ROUTINE)ConsoleHandler,TRUE);
 
 	MSG msg;
 	int err;

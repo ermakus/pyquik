@@ -1,30 +1,82 @@
-#include "stdafx.h"
 #include "serv.h"
 #include "table.h"
 #include "market.h"
 
 enum ddt {tdtFloat=1, tdtString, tdtBool, tdtError, tdtBlank, tdtInt, tdtSkip, tdtTable = 16}; 
 
-CMarketServer::CMarketServer()
+CMarketServer* g_pServer = 0;
+
+HDDEDATA CALLBACK DDE_Callback(UINT uType, UINT uFmt, HCONV hConv, HSZ hsz1, HSZ hsz2, HDDEDATA hData, DWORD dwData1, DWORD dwData2)
 {
+	switch (uType)
+	{
+        case XTYP_CONNECT:
+        {
+            return (HDDEDATA)TRUE;
+        }
+
+	    case XTYP_POKE:	
+		{
+			BOOL flag = FALSE;
+			CHAR buf[200];
+			//flag = server.xltable.GetData(hData);
+			
+			if (!flag)
+			{
+				DdeQueryStringA(g_pServer->m_dwInst,hsz1,buf,200,CP_WINANSI);
+				//server.xltable.GetBuf(buf);
+	            return((HDDEDATA)DDE_FACK); 
+			}
+			return (HDDEDATA)TRUE;
+	    }
+
+	    case XTYP_DISCONNECT:
+	    {
+			break;
+	    }
+
+	    case XTYP_ERROR:
+	    {
+            break;
+        }
+    }
+    return((HDDEDATA)NULL);
+}
+
+/*	Table table;
+	g_pServer->ParseData( table, (PBYTE)pData, dwSize );
+	for( MarketListeners::const_iterator it = m_listeners.begin(); it != m_listeners.end(); it++)
+		(*it)->onTableData( pszTopic, pszItem, &table );
+	return TRUE;*/
+
+CMarketServer::CMarketServer(std::string name) : m_strName( name )
+{
+    g_pServer = this;
 }
 
 CMarketServer::~CMarketServer()
 {
-	Shutdown();
 }
 
-void CMarketServer::Shutdown(int flags)
+bool CMarketServer::Connect()
 {
-	if (m_bInitialized)
+	if(!RegisterClipboardFormatA((LPSTR)"XlTable")) return false;
+	if(DdeInitialize(&m_dwInst, DDE_Callback, APPCLASS_STANDARD, 0)) return false;
+	m_hszService = DdeCreateStringHandleA(m_dwInst, m_strName.c_str(), CP_WINANSI);
+	if(m_hszService == 0) return false;
+	if(!DdeNameService(m_dwInst, m_hszService, NULL, DNS_REGISTER)) return false;
+	return true;
+}
+
+void CMarketServer::Disconnect()
+{
+	if (m_dwInst)
 	{
-		CDDEServer::Shutdown(flags);
+		DdeNameService(m_dwInst, m_hszService, (HSZ)NULL, DNS_UNREGISTER);
+		if(m_hszService) DdeFreeStringHandle(m_dwInst, m_hszService);
+		DdeUninitialize(m_dwInst);
+		m_dwInst = 0;
 	}
-}
-
-BOOL CMarketServer::OnCreate()
-{
-    return TRUE;
 }
 
 void CMarketServer::OnConnected()
@@ -40,19 +92,12 @@ void CMarketServer::OnDisconnected()
 }
 
 
-void CMarketServer::OnTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum, const char* lpcstrTransactionReplyMessage)
+void CMarketServer::OnTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, 
+                                        unsigned long dwTransId, double dOrderNum, const char* lpcstrTransactionReplyMessage)
 {
 	for( MarketListeners::const_iterator it = m_listeners.begin(); it != m_listeners.end(); it++)
-		(*it)->onTransactionResult( nTransactionResult, nTransactionExtendedErrorCode, nTransactionReplyCode, dwTransId, dOrderNum, cp1251_to_utf8(lpcstrTransactionReplyMessage) );
-}
-
-BOOL CMarketServer::Poke(UINT wFmt, LPCTSTR pszTopic, LPCTSTR pszItem, void* pData, DWORD dwSize)
-{
-	Table table;
-	ParseData( table, (PBYTE)pData, dwSize );
-	for( MarketListeners::const_iterator it = m_listeners.begin(); it != m_listeners.end(); it++)
-		(*it)->onTableData( pszTopic, pszItem, &table );
-	return TRUE;
+		(*it)->onTransactionResult( nTransactionResult, nTransactionExtendedErrorCode, 
+                                    nTransactionReplyCode, dwTransId, dOrderNum, cp1251_to_utf8(lpcstrTransactionReplyMessage) );
 }
 
 

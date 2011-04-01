@@ -96,6 +96,8 @@ class Quik(MarketListener):
 
     def onDataReady(self):
         log.info("Initail data loaded")
+        if quik.market.connect( self.quikPath ):
+            raise Exception( self.market.errorMessage() )
         sber = self.TICKERS.SBER03
         assert sber.price > 1
         o = sber.buy( sber.price / 2, 1 )
@@ -136,7 +138,5 @@ class Quik(MarketListener):
 if __name__ == "__main__":
 
     quik = Quik("c:\\quik-bcs")
-    if quik.market.connect( quik.quikPath ):
-        raise Exception( self.market.errorMessage() )
     quik.run()
 
