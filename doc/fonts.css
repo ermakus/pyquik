@@ -1,0 +1,18 @@
+@font-face {
+  font-family: 'Yanone Kaffeesatz';
+  font-style: normal;
+  font-weight: 700;
+  src: local('Yanone Kaffeesatz Bold'), local('YanoneKaffeesatz-Bold'), url('http://themes.googleusercontent.com/font?kit=We_iSDqttE3etzfdfhuPRWwXwFHHZlCwprwJOQ-Se7k') format('woff');
+}
+@font-face {
+  font-family: 'Yanone Kaffeesatz';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Yanone Kaffeesatz Regular'), local('YanoneKaffeesatz-Regular'), url('http://themes.googleusercontent.com/font?kit=YDAoLskQQ5MOAgvHUQCcLRTHiN2BPBirwIkMLKUspj4') format('woff');
+}
+@font-face {
+  font-family: 'Inconsolata';
+  font-style: normal;
+  font-weight: normal;
+  src: local('Inconsolata'), url('http://themes.googleusercontent.com/font?kit=BjAYBlHtW3CJxDcjzrnZCIbN6UDyHWBl620a-IRfuBk') format('woff');
+}

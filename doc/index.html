@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru-RU">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <!--[if IE]><script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  <title>Stock trading with python and quik</title>
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="stylesheet" href="tripoli.simple.css" type="text/css">
+  <!--[if IE]><link rel="stylesheet" href="tripoli.simple.ie.css" type="text/css"><![endif]-->
+  <link href="fonts.css" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="lolstyles.css" type="text/css">
+</head>
+<body class="content">
+
+<header>
+  <h1>PyQuik</h1>
+  <p>Tranding with <em>python</em> and <em>Quik</em></p>
+  <a href="http://github.com/ermakus/pyquik" id="fork-me">Fork me on Github</a>
+</header>
+
+<section id="features">
+  <header>
+    <h2>Features</h2>
+  </header>
+  
+  <ul>
+    <li>Import data with DDE</li>
+    <li>Submit orders with trans2quik.dll</li>
+    <li>Native interface with <a href="http://ta-lib.org/">TA-Lib</a> (more then 150 functions and indicators)</li>
+    <li>Monitoring over WEB interface</li>
+  </ul>
+
+</section>
+
+<section id="examples">
+  <header>
+    <h2>Example</h2>
+  </header>
+  
+  <p>Sample trading robot</p>
+
+<div class="highlight">
+<pre>
+<code class="python">
+from quik import Quik
+from trading import order
+
+# Called every price change
+def handle_tick( ticker ):
+    if ticker.price &lt; 100.0:
+        ticker.buy( order.MARKET_PRICE, 1 )
+    if ticker.price &gt; 200.0 and ticker.orders.quantity &gt; 0:
+        ticker.sell( order.MARKET_PRICE, ticker.orders.quantity )
+
+quik = Quik("c:\\quik","QuikDDE")
+quik.SBER03.ontick( handle_tick )
+quik.run()
+</code>
+</pre>
+</div>
+  
+</section>
+
+<section id="docs">
+  <header>
+    <h2>Documentation</h2>
+  </header>
+  
+  <p>TODO</p>
+
+</section>
+
+<footer id="about">
+  <header>
+    <h2>About</h2>
+  </header>
+
+  <section>
+    <h3>Author</h3>
+    <ul>
+      <li>Written by <a href="http://www.ermak.us">Anton Ermak</a></li>
+    </ul>
+
+    <h3>License</h3>
+    <p>PyQuik is <a href="http://unlicense.org/">UNLICENSED</a>.</p>
+  </section>
+</footer>
+
+<script>
+  // 960 Gridder
+  var gOverride =
+    { urlBase: 'http://gridder.andreehansson.se/releases/latest/'
+    , gColor: '#EEEEEE'
+    , gColumns: 12
+    , gOpacity: 0.35
+    , gWidth: 10
+    , pColor: '#C0C0C0'
+    , pHeight: 18
+    , pOffset: 0
+    , pOpacity: 0.55
+    , center: true
+    , gEnabled: true
+    , pEnabled: true
+    , setupEnabled: true
+    , fixFlash: true
+    , size: 960
+    }
+</script>
+
+</body></html>
