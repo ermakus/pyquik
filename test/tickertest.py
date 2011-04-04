@@ -1,18 +1,17 @@
 import unittest, datetime
-from trading.ticker import *
-from trading.order import *
+from trading import *
+
 
 class TestQuik:
     
-    def execute(self,cmd,order):
-        self.last_cmd = cmd
-        order.order_key = "OK-%s" % order.trans_id
+    def execute(self,cmd):
+        self.last_cmd = ";".join( [ ("%s=%.2f" if name == "price" else "%s=%s") % ( name.upper(), cmd[name] ) for name in cmd ] )
 
 class TickerTest(unittest.TestCase):
 
     def setUp(self):
         self.quik = TestQuik()
-        self.factory = TickerFactory( self.quik )
+        self.factory = Market( self.quik )
         self.ticker = self.factory.SBER
         self.ticker.classcode = "SBERCC"
 
@@ -50,11 +49,12 @@ class TickerTest(unittest.TestCase):
         self.assertEquals( order.operation, BUY )
         self.assertEquals( order.price, 100 )
         self.assertEquals( order.quantity, 1 )
-        self.assertEquals( self.quik.last_cmd, "ACTION=NEW_ORDER;TRANS_ID=1;SECCODE=SBER;CLASSCODE=SBERCC;ACCOUNT=L01-00000F00;CLIENT_CODE=52709;OPERATION=B;QUANTITY=1;PRICE=100.00" )
+        self.assertEquals( self.quik.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=B;SECCODE=SBER;TRANS_ID=1;QUANTITY=1")
         order = self.factory.SBER.sell(MARKET_PRICE,10)
-        self.assertEquals( self.quik.last_cmd, "ACTION=NEW_ORDER;TRANS_ID=2;SECCODE=SBER;CLASSCODE=SBERCC;ACCOUNT=L01-00000F00;CLIENT_CODE=52709;OPERATION=S;QUANTITY=10;PRICE=0.00" )
+        self.assertEquals( self.quik.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=0.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=S;SECCODE=SBER;TRANS_ID=2;QUANTITY=10" )
+        order.order_key = "OK-%s" % order.trans_id
         order.kill()
-        self.assertEquals( self.quik.last_cmd, "ACTION=KILL_ORDER;TRANS_ID=3;SECCODE=SBER;CLASSCODE=SBERCC;ORDER_KEY=OK-2" )
+        self.assertEquals( self.quik.last_cmd, "ACTION=KILL_ORDER;SECCODE=SBER;CLASSCODE=SBERCC;TRANS_ID=3;ORDER_KEY=OK-2" )
 
 if __name__ == '__main__':
     suite = unittest.TestSuite()

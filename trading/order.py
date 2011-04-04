@@ -48,22 +48,26 @@ class Order:
         self.classcode = ticker.classcode
         self.order_key = None
 
-    def fields(self):
-        return ['trans_id','seccode','classcode','account','client_code','operation','quantity']
-
     def cmd_submit(self):
-        return "ACTION=NEW_ORDER;" + ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in self.fields() ] ) + (';PRICE=%.2f' % self.price)
+        keys = ['action','trans_id','seccode','classcode','account','client_code','operation','quantity','price']
+        vals = [  getattr( self, x, None ) for x in keys ]
+        vals[0] = 'NEW_ORDER'
+        return dict( zip( keys, vals ) )
 
     def cmd_kill(self):
         Order.LAST_ID +=1
         if not self.order_key: raise Exception("Can't kill unregistered order")
-        return ("ACTION=KILL_ORDER;TRANS_ID=%s;" % Order.LAST_ID) + ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in['seccode','classcode','order_key'] ] )
+        keys = ['action','trans_id','seccode','classcode','order_key']
+        vals = [  getattr( self, x, None ) for x in keys ]
+        vals[0] = 'KILL_ORDER'
+        vals[1] = Order.LAST_ID
+        return dict( zip( keys, vals ) )
  
     def submit(self):
-        self.ticker.factory.quik.execute( self.cmd_submit(), self )
+        self.ticker.market.execute( self.cmd_submit() )
 
     def kill(self):
-        self.ticker.factory.quik.execute( self.cmd_kill(), self )
+        self.ticker.market.execute( self.cmd_kill() )
 
     def __repr__(self):
         return "ORDER_KEY=%s;%s" % ( self.order_key, self.cmd_submit())

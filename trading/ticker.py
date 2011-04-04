@@ -52,12 +52,13 @@ class Ticker:
 
     SERIES = ['time','price','volume']
 
-    def __init__(self,factory,name):
-        self.factory = factory
+    def __init__(self,market,name):
+        self.market = market
         self.seccode = name
         self.classcode = False
         self.series = {}
         self.orders = []
+        self.on_tick = None
         for name in Ticker.SERIES:
             self.series[ name ] = Serie(self,name,dtype=(numpy.float if name != 'time' else datetime.datetime))
 
@@ -85,55 +86,12 @@ class Ticker:
     def tick(self):
         for name in self.series:
             self.series[name].push( getattr( self, name, None ) )
+        if self.on_tick:
+            self.on_tick( self )
+
+    def ontick(self,callback):
+        self.on_tick = callback
 
     def __repr__(self):
         return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in (Ticker.FIELDS + Ticker.SERIES) ]  )
 
-class TickerFactory:
-
-    def __init__(self, quik):
-        self.quik    = quik
-        self.tickers = {}
-        self.headers = False
-
-    def __call__(self, name):
-        return self.__getattr__(name)
-
-    def __getattr__(self, name):
-        if name in self.tickers:
-            return self.tickers[ name ]
-        ticker = self.tickers[ name ] = Ticker( self, name )
-        return ticker
-
-    def update( self, table, r ):
-        ticker = self(table.getString(r,self.headers.index("Код бумаги")))
-        if not ticker.classcode:
-            ticker.classcode = table.getString(r,self.headers.index("Код класса"))
-
-        ticker.time = datetime.datetime.now()
-        ticker.price =  float(table.getDouble(r,self.headers.index("Цена послед.")))
-        ticker.volume = int(table.getDouble(r,self.headers.index("Оборот")))
-        ticker.tick()
-        if hasattr( self.quik, "onTicker" ):
-            self.quik.onTicker( ticker )
-
-    def load(self, filename):
-        fp = open( filename )
-        try:
-            headers = fp.readline().rstrip().split(',')
-            IDX_TICKER = headers.index( '<TICKER>' )
-            IDX_DATE = headers.index( '<DATE>' )
-            IDX_TIME = headers.index( '<TIME>' )
-            IDX_LAST = headers.index( '<LAST>' )
-            IDX_VOL  = headers.index( '<VOL>' )
-            while True:
-                line = fp.readline()
-                if not line: break
-                row = line.rstrip().split(',')
-                ticker = self( row[ IDX_TICKER ] )
-                ticker.time = datetime.datetime.strptime(row[ IDX_DATE ]+row[ IDX_TIME ], '%Y%m%d%H%M%S')
-                ticker.price = float(row[ IDX_LAST ])
-                ticker.volume = float(row[ IDX_VOL ])
-                ticker.tick()
-        finally:
-            fp.close()
