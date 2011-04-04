@@ -58,7 +58,7 @@ cdef class Quik:
     cdef dict  handl
     cdef bytes last_cmd
     cdef bytes last_error
-    cdef list  callbacks
+    cdef dict  callbacks
 
     def __init__(self,path, ddename):
         global quik
@@ -70,7 +70,7 @@ cdef class Quik:
         self.ddename = ddename.encode("utf-8")
         self.ready = 0
         self.handl = dict()
-        self.callbacks = list()
+        self.callbacks = dict()
 
         if self.market.ddeConnect(self.ddename):
             raise Exception( self.error() )
@@ -95,11 +95,6 @@ cdef class Quik:
     def error(self):
         self.last_error = self.market.errorMessage();
         return self.last_error.decode("utf-8")
-
-    def execute(self,cmd,callback=None):
-        self.last_cmd = cmd.encode("utf-8")
-        self.callbacks.append( callback )
-        self.market.sendAsync( self.last_cmd )
 
     def run(self):
         try:
@@ -141,9 +136,21 @@ cdef class Quik:
     def onDisconnect( self ):
         log.info( "Disconnected" )
 
+
+    @classmethod
+    def cmd2str(self,cmd):
+        return ";".join( [ ("%s=%.2f" if name == "price" else "%s=%s") % ( name.upper(), cmd[name] ) for name in cmd ] )
+
+    def execute(self,cmd,callback=None):
+        trans_id = int(cmd['trans_id'])
+        self.last_cmd = Quik.cmd2str(cmd).encode("utf-8")
+        self.callbacks[trans_id] =  callback
+        self.market.sendAsync( self.last_cmd )
+
     def onTrans( self, result, errorCode, reply, tid, order ):
-        cb = self.callbacks.pop(0)
         log.info( "Transaction: res=%s err=%s reply=%s tid=%s order=%s msg=%s" % ( result, errorCode, reply, tid, order, self.error() ) )
+        cb = self.callbacks[ tid ]
+        del self.callbacks[ tid ]
         if cb: cb( result, errorCode, reply, tid, order, self.error() )
 
 RE_TOPIC = re.compile("\\[(.*)\\](.*)");
@@ -186,11 +193,15 @@ cdef void quik_onData(char* topic, char* item, Table* table):
             # Init table header
             if row == 0:
                 top = 1
-                handler.headers = [ table.getString(0, c).decode("utf-8") for c in range( cols ) ]
-                handler.indexes = [ handler.headers.index( handler.fields[f] ) for f in handler.fields ]
+                try:
+                    handler.headers = [ table.getString(0, c).decode("utf-8") for c in range( cols ) ]
+                    handler.indexes = [ handler.headers.index( handler.fields[f] ) for f in handler.fields ]
+                except ValueError:
+                    handler.indexes = None
+                    raise Exception("Table '%s' header do not match column list" % title )
             else:
                 top = 0
-                if not handler.headers:
+                if not handler.indexes:
                     raise Exception("Headers for table '%s' not found" % title )
 
             # Call handler for each table row
@@ -222,7 +233,11 @@ cdef void quik_onData(char* topic, char* item, Table* table):
 cdef void quik_onEvent( MarketEvent* event ):
     global quik
     if not quik: return
-    if event.type == ET_CONNECT: quik.onConnect()
-    if event.type == ET_DISCONNECT: quik.onDisconnect()
-    if event.type == ET_DATA: quik_onData( event.topic, event.item, event.table )
-    if event.type == ET_TRANS: quik.onTrans( event.result, event.errorCode, event.reply, event.tid, event.order )
+    try:
+        if event.type == ET_CONNECT: quik.onConnect()
+        if event.type == ET_DISCONNECT: quik.onDisconnect()
+        if event.type == ET_DATA: quik_onData( event.topic, event.item, event.table )
+        if event.type == ET_TRANS: quik.onTrans( event.result, event.errorCode, event.reply, event.tid, event.order )
+    except:
+        traceback.print_exc(file=sys.stdout)
+

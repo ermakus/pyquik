@@ -10,7 +10,7 @@ class QDDETest(unittest.TestCase):
 
     def testRun(self):
         self.assertTrue(self.quik.error(),"OK")
-        self.quik.execute("GARBAGE", lambda res,err,rep,tid,order,msg: print(msg) )
+        self.quik.execute({"trans_id":"1"}, lambda res,err,rep,tid,order,msg: print(msg) )
         self.quik.run()
 
 if __name__ == '__main__':

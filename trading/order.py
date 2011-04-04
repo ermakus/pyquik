@@ -64,10 +64,13 @@ class Order:
         return dict( zip( keys, vals ) )
  
     def submit(self):
-        self.ticker.market.execute( self.cmd_submit() )
+        self.ticker.market.execute( self.cmd_submit(), self.status )
 
     def kill(self):
-        self.ticker.market.execute( self.cmd_kill() )
+        self.ticker.market.execute( self.cmd_kill(), self.status )
+
+    def status(self,res,err,rep,tid,order,msg):
+        print("Order status: %s" % ( msg ) )
 
     def __repr__(self):
         return "ORDER_KEY=%s;%s" % ( self.order_key, self.cmd_submit())

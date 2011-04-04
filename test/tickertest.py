@@ -1,11 +1,12 @@
 import unittest, datetime
 from trading import *
-
+from quik import Quik
 
 class TestQuik:
     
     def execute(self,cmd):
-        self.last_cmd = ";".join( [ ("%s=%.2f" if name == "price" else "%s=%s") % ( name.upper(), cmd[name] ) for name in cmd ] )
+        self.last_cmd = Quik.cmd2str( cmd )
+
 
 class TickerTest(unittest.TestCase):
 
