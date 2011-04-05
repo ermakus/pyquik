@@ -48,6 +48,7 @@ class Order:
         self.classcode = ticker.classcode
         self.order_key = None
         self.onstatus = None
+        self.onkill = None
 
     def cmd_submit(self):
         keys = ['action','trans_id','seccode','classcode','account','client_code','operation','quantity','price']
@@ -65,15 +66,23 @@ class Order:
         return dict( zip( keys, vals ) )
  
     def submit(self):
-        self.ticker.market.execute( self.cmd_submit(), self.status )
+        self.ticker.market.execute( self.cmd_submit(), self.submit_status )
 
-    def kill(self):
-        self.ticker.market.execute( self.cmd_kill(), self.status )
-
-    def status(self,res,err,rep,tid,order,msg):
-#        print("Order status: res=%s err=%s rep=%s tid=%s ord=%s msg=%s" % ( res, err, rep, tid, order, msg ) )
+    def submit_status(self,res,err,rep,tid,order,msg):
+        print("Order status: res=%s err=%s rep=%s tid=%s ord=%s msg=%s" % ( res, err, rep, tid, order, msg ) )
         self.order_key = int(order)
         if self.onstatus: self.onstatus( self, err, msg )
+
+    def kill(self):
+        self.ticker.market.execute( self.cmd_kill(), self.kill_status )
+
+    def kill_status(self,res,err,rep,tid,order,msg):
+        print( msg )
+        if self.onkill: self.onkill( self, err, msg )
+
+    def __eq__(self, other):
+        if not isinstance(other, Order): raise NotImplementedError
+        return self.order_key==other.order_key
 
     def __repr__(self):
         return "ORDER_KEY=%s;%s" % ( self.order_key, self.cmd_submit())
@@ -85,26 +94,17 @@ class StopOrder(Order):
         self.stopprice=100.0
         self.expiry_date="20110401"
 
-    def fields(self):
-        return Order.fields() + ['stopprice','expiry_date']
+    def cmd_submit(self):
+        keys = ['action','trans_id','seccode','classcode','account','client_code','operation','quantity','price','stopprice','expiry_date']
+        vals = [  getattr( self, x, None ) for x in keys ]
+        vals[0] = 'NEW_STOP_ORDER'
+        return dict( zip( keys, vals ) )
 
-class OrderFactory:
-
-    def __init__(self, quik):
-        self.quik  = quik
-        self.headers = False
-        self.orders = {}
-
-    OP_TYPE = {"Купля":BUY,"Продажа":SELL}
-
-    def update( self, table, row ):
-        ticker    = self.quik.TICKERS(table.getString(row,self.headers.index("Код бумаги")))
-        op        = OrderFactory.OP_TYPE[table.getString(row,self.headers.index("Операция"))]
-        price     = float(table.getDouble(row,self.headers.index("Цена")))
-        quantity  = int(table.getDouble(row,self.headers.index("Кол-во")))
-        order     = Order(ticker,op,price,quantity)
-        order.order_key = int(table.getDouble(row,self.headers.index("Номер")))
-        self.orders[ order.order_key ] = order
-        if hasattr( self.quik, "onOrder" ):
-            self.quik.onOrder( order )
-
+    def cmd_kill(self):
+        Order.LAST_ID +=1
+        if not self.order_key: raise Exception("Can't kill unregistered order")
+        keys = ['action','trans_id','seccode','classcode','order_key']
+        vals = [  getattr( self, x, None ) for x in keys ]
+        vals[0] = 'KILL_STOP_ORDER'
+        vals[1] = Order.LAST_ID
+        return dict( zip( keys, vals ) )

@@ -81,6 +81,15 @@ class Ticker:
         self.orders.append(o)
         return o
 
+    def order(self, order_key):
+        tmp = Order( self )
+        tmp.order_key = order_key
+        try:
+            return self.orders[ self.orders.index( tmp ) ]
+        except ValueError:
+            self.orders.append( tmp )
+            return tmp
+
     def tick(self):
         for name in self.series:
             self.series[name].push( getattr( self, name, None ) )

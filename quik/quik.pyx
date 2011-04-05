@@ -47,6 +47,8 @@ class DataHandler:
     def __init__(self, name, fields, callback):
         self.name = name
         self.fields = fields
+        self.headers = None
+        self.indexes = None
         self.callback = callback
 
 cdef class Quik:
@@ -59,6 +61,7 @@ cdef class Quik:
     cdef bytes last_cmd
     cdef bytes last_error
     cdef dict  callbacks
+    cdef dict  events
 
     def __init__(self,path, ddename):
         global quik
@@ -71,6 +74,7 @@ cdef class Quik:
         self.ready = 0
         self.handl = dict()
         self.callbacks = dict()
+        self.events = dict()
 
         if self.market.ddeConnect(self.ddename):
             raise Exception( self.error() )
@@ -88,6 +92,9 @@ cdef class Quik:
 
     def handlers(self):
         return self.handl
+
+    def bind( self, name, callback ):
+        self.events[name] = callback
 
     def is_ready(self):
         return self.ready
@@ -126,16 +133,19 @@ cdef class Quik:
 
     def onReady(self):
         log.info( "DDE data ready" )
+        if "ready" in self.events: self.events["ready"]()
 
     def onRestart(self):
         log.info( "DDE export restarted" )
+        if "restart" in self.events: self.events["restart"]()
 
     def onConnect( self ):
         log.info( "Connected" )
+        if "connect" in self.events: self.events["connect"]()
 
     def onDisconnect( self ):
         log.info( "Disconnected" )
-
+        if "disconnect" in self.events: self.events["disconnect"]()
 
     @classmethod
     def cmd2str(self,cmd):
@@ -221,7 +231,7 @@ cdef void quik_onData(char* topic, char* item, Table* table):
             if row == 0:
                 wait = len( quik.handlers() )
                 for h in quik.handlers():
-                    if quik.handlers()[ h ].headers:
+                    if quik.handlers()[ h ].indexes:
                         wait -= 1
                 if wait == 0:
                     quik.onDataReady()
