@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import datetime
-from quik import quik
 from trading.ticker import Ticker
 
 class Market:

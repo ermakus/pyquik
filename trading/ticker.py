@@ -74,13 +74,11 @@ class Ticker:
     def buy(self,price=MARKET_PRICE,quantity=1):
         o = Order(self,BUY, price, quantity)
         self.orders.append(o)
-        o.submit()
         return o
 
     def sell(self,price=MARKET_PRICE,quantity=1):
         o = Order(self, SELL, price, quantity)
         self.orders.append(o)
-        o.submit()
         return o
 
     def tick(self):

@@ -47,6 +47,7 @@ class Order:
         self.seccode = ticker.seccode
         self.classcode = ticker.classcode
         self.order_key = None
+        self.onstatus = None
 
     def cmd_submit(self):
         keys = ['action','trans_id','seccode','classcode','account','client_code','operation','quantity','price']
@@ -70,7 +71,9 @@ class Order:
         self.ticker.market.execute( self.cmd_kill(), self.status )
 
     def status(self,res,err,rep,tid,order,msg):
-        print("Order status: %s" % ( msg ) )
+#        print("Order status: res=%s err=%s rep=%s tid=%s ord=%s msg=%s" % ( res, err, rep, tid, order, msg ) )
+        self.order_key = int(order)
+        if self.onstatus: self.onstatus( self, err, msg )
 
     def __repr__(self):
         return "ORDER_KEY=%s;%s" % ( self.order_key, self.cmd_submit())

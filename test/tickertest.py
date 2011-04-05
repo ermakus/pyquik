@@ -1,11 +1,14 @@
 import unittest, datetime
 from trading import *
-from quik import Quik
 
 class TestQuik:
+
+    @classmethod
+    def cmd2str(self,cmd):
+        return ";".join( [ ("%s=%.2f" if name == "price" else "%s=%s") % ( name.upper(), cmd[name] ) for name in cmd ] )
     
-    def execute(self,cmd):
-        self.last_cmd = Quik.cmd2str( cmd )
+    def execute(self,cmd,callback):
+        self.last_cmd = TestQuik.cmd2str( cmd )
 
 
 class TickerTest(unittest.TestCase):
@@ -50,8 +53,10 @@ class TickerTest(unittest.TestCase):
         self.assertEquals( order.operation, BUY )
         self.assertEquals( order.price, 100 )
         self.assertEquals( order.quantity, 1 )
+        order.submit()
         self.assertEquals( self.quik.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=B;SECCODE=SBER;TRANS_ID=1;QUANTITY=1")
         order = self.factory.SBER.sell(MARKET_PRICE,10)
+        order.submit()
         self.assertEquals( self.quik.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=0.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=S;SECCODE=SBER;TRANS_ID=2;QUANTITY=10" )
         order.order_key = "OK-%s" % order.trans_id
         order.kill()
