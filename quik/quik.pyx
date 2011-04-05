@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import re, traceback, sys, logging
 from time import sleep
+from util import Hook, cmd2str
 
 log = logging.getLogger("quik")
 
@@ -38,6 +39,7 @@ cdef extern from "quikdde.h":
         long ddeConnect(char* ddeName)
         void ddeDisconnect()
         void run()
+        void stop()
 
         char* errorMessage()
 
@@ -57,25 +59,34 @@ cdef class Quik:
     cdef Market* market
     cdef bytes path
     cdef bytes ddename
-    cdef int   ready
-    cdef dict  handl
     cdef bytes last_cmd
     cdef bytes last_error
-    cdef dict  callbacks
-    cdef dict  events
+
+    cdef public dict handlers
+    cdef public dict callbacks
+
+    cdef public object onconnect
+    cdef public object ondisconnect
+    cdef public object onready
 
     def __init__(self,path, ddename):
+        """Connect to running quik instance
+        path - Path to quik install
+        ddename - DDE server name
+        """
         global quik
         if quik: 
             raise Exception("Only one instance of Quik is permitted")
         quik = self
-        self.market = new Market( quik_onEvent )
+        self.market = new Market( quik_onevent )
         self.path = path.encode("utf-8")
         self.ddename = ddename.encode("utf-8")
-        self.ready = 0
-        self.handl = dict()
+        self.handlers = dict()
         self.callbacks = dict()
-        self.events = dict()
+
+        self.onconnect = Hook()
+        self.ondisconnect = Hook()
+        self.onready = Hook()
 
         if self.market.ddeConnect(self.ddename):
             raise Exception( self.error() )
@@ -84,27 +95,28 @@ cdef class Quik:
             raise Exception( self.error() )
 
     def __del__(self):
+        """Disconnect and free memory"""
         self.market.disconnect()
         self.market.ddeDisconnect()
         del self.market
 
-    def register(self,table,fields,callback):
-        self.handl[ table ] = DataHandler(table,fields,callback)
-
-    def handlers(self):
-        return self.handl
-
-    def bind( self, name, callback ):
-        self.events[name] = callback
-
-    def is_ready(self):
-        return self.ready
+    def subscribe(self,table,fields,callback):
+        """Subscribe to DDE data
+        table - Table name
+        fields - dict { "key":"column title" }
+        callback - function( row_as_dict )
+        """
+        self.handlers[ table ] = DataHandler(table,fields,callback)
 
     def error(self):
+        """Returns last error message"""
         self.last_error = self.market.errorMessage();
         return self.last_error.decode("utf-8")
 
     def run(self):
+        """Start quik export and entering message loop
+        win32gui package is required for DDE export autostart
+        """
         try:
             import win32gui
             def callback (hwnd, hwnds):
@@ -126,49 +138,26 @@ cdef class Quik:
 
         self.market.run()
 
-    def onDataReady(self):
-        if self.ready:
-            self.onRestart()
-        else:
-            self.ready = 1
-            self.onReady()
-
-    def onReady(self):
-        log.info( "DDE data ready" )
-        if "ready" in self.events: self.events["ready"]()
-
-    def onRestart(self):
-        log.info( "DDE export restarted" )
-        if "restart" in self.events: self.events["restart"]()
-
-    def onConnect( self ):
-        log.info( "Connected" )
-        if "connect" in self.events: self.events["connect"]()
-
-    def onDisconnect( self ):
-        log.info( "Disconnected" )
-        if "disconnect" in self.events: self.events["disconnect"]()
-
-    @classmethod
-    def cmd2str(self,cmd):
-        return ";".join( [ ("%s=%.2f" if name == "price" else "%s=%s") % ( name.upper(), cmd[name] ) for name in cmd ] )
+    def stop(self):
+        """Exit message loop"""
+        self.market.stop()
 
     def execute(self,cmd,callback=None):
+        """Exceute transaction (async)
+        cmd - dict({"key":"value",..})
+        callback - function(result_as_dict)
+        """
         trans_id = int(cmd['trans_id'])
-        self.last_cmd = Quik.cmd2str(cmd).encode("utf-8")
+        self.last_cmd = cmd2str(cmd).encode("utf-8")
         self.callbacks[trans_id] =  callback
+        log.info("Execute: %s" % self.last_cmd )
         self.market.sendAsync( self.last_cmd )
 
-    def onTrans( self, result, errorCode, reply, tid, order ):
-        log.info( "Transaction: res=%s err=%s reply=%s tid=%s order=%s msg=%s" % ( result, errorCode, reply, tid, order, self.error() ) )
-        cb = self.callbacks[ tid ]
-        del self.callbacks[ tid ]
-        if cb: cb( result, errorCode, reply, tid, order, self.error() )
 
 RE_TOPIC = re.compile("\\[(.*)\\](.*)");
 RE_ITEM  = re.compile("R(\\d*)C(\\d*):R(\\d*)C(\\d*)");
 
-cdef void quik_onData(char* topic, char* item, Table* table):
+cdef void quik_ondata(char* topic, char* item, Table* table):
     global quik
     cdef str title
     cdef str page
@@ -181,75 +170,89 @@ cdef void quik_onData(char* topic, char* item, Table* table):
     cdef int r
     cdef dict data
 
-    try:
-        tre = RE_TOPIC.match( topic.decode("utf-8") )
-        if not tre:
-            raise Exception( "Invalid topic format: %s" % topic )
+    tre = RE_TOPIC.match( topic.decode("utf-8") )
+    if not tre:
+        raise Exception( "Invalid topic format: %s" % topic )
 
-        ire = RE_ITEM.match( item.decode("utf-8") )
-        if not ire:
-            raise Exception( "Invalid item format: %s" % item )
+    ire = RE_ITEM.match( item.decode("utf-8") )
+    if not ire:
+        raise Exception( "Invalid item format: %s" % item )
 
-        title = tre.group(1);
-        page  = tre.group(2);
-        row   = int( ire.group(1) ) - 1;
-        col   = int( ire.group(2) ) - 1;
-        rows  = int( ire.group(3) ) - row;
-        cols  = int( ire.group(4) ) - col;
+    title = tre.group(1);
+    page  = tre.group(2);
+    row   = int( ire.group(1) ) - 1;
+    col   = int( ire.group(2) ) - 1;
+    rows  = int( ire.group(3) ) - row;
+    cols  = int( ire.group(4) ) - col;
 
-        if table.cols() != cols or table.rows() != rows:
-            raise Exception( "Table data don't match item format")
+    if table.cols() != cols or table.rows() != rows:
+        raise Exception( "Table data don't match item format")
 
-        if title in quik.handlers():
-            handler = quik.handlers()[ title ]
-            # Init table header
-            if row == 0:
-                top = 1
-                try:
-                    handler.headers = [ table.getString(0, c).decode("utf-8") for c in range( cols ) ]
-                    handler.indexes = [ handler.headers.index( handler.fields[f] ) for f in handler.fields ]
-                except ValueError:
-                    handler.indexes = None
-                    raise Exception("Table '%s' header do not match column list" % title )
-            else:
-                top = 0
-                if not handler.indexes:
-                    raise Exception("Headers for table '%s' not found" % title )
+    if title in quik.handlers:
+        handler = quik.handlers[ title ]
+        # Init table header
+        if row == 0:
+            top = 1
+            try:
+                handler.headers = [ table.getString(0, c).decode("utf-8") for c in range( cols ) ]
+                handler.indexes = [ handler.headers.index( handler.fields[f] ) for f in handler.fields ]
+            except ValueError:
+                raise Exception("Table '%s' header do not match column list" % title )
+        else:
+            top = 0
+            if not handler.indexes:
+                raise Exception("Headers for table '%s' not found" % title )
 
-            # Call handler for each table row
-            for r in range(top,rows):
-                data = dict()
-                c = 0
-                for f in handler.fields:
-                    index = handler.indexes[c]
-                    val = table.getString(r, index).decode("utf-8")
-                    if val == "DOUBLE":
-                        val = float(table.getDouble(r, index))
-                    data[ f ] = val
-                    c += 1
-                handler.callback( data )
+        # Call handler for each table row
+        for r in range(top,rows):
+            data = dict()
+            c = 0
+            for f in handler.fields:
+                index = handler.indexes[c]
+                val = table.getString(r, index).decode("utf-8")
+                if val == "DOUBLE":
+                    val = float(table.getDouble(r, index))
+                data[ f ] = val
+                c += 1
+            handler.callback( data )
 
-            # Fire onDataReady if all tables is loaded
-            if row == 0:
-                wait = len( quik.handlers() )
-                for h in quik.handlers():
-                    if quik.handlers()[ h ].indexes:
-                        wait -= 1
-                if wait == 0:
-                    quik.onDataReady()
+        # Fire onReady if all tables is loaded
+        if row == 0:
+            wait = len( quik.handlers )
+            for h in quik.handlers:
+                if quik.handlers[ h ].indexes:
+                    wait -= 1
+            if wait == 0:
+                quik.onready()
 
-    except:
-        traceback.print_exc(file=sys.stdout)
-
-
-cdef void quik_onEvent( MarketEvent* event ):
+cdef void quik_onevent( MarketEvent* event ):
     global quik
     if not quik: return
     try:
-        if event.type == ET_CONNECT: quik.onConnect()
-        if event.type == ET_DISCONNECT: quik.onDisconnect()
-        if event.type == ET_DATA: quik_onData( event.topic, event.item, event.table )
-        if event.type == ET_TRANS: quik.onTrans( event.result, event.errorCode, event.reply, event.tid, event.order )
+        if event.type == ET_CONNECT: 
+            quik.onconnect()
+            return
+        if event.type == ET_DISCONNECT: 
+            quik.ondisconnect()
+            return
+        if event.type == ET_DATA: 
+            quik_ondata( event.topic, event.item, event.table )
+            return
+        if event.type == ET_TRANS:
+            tid = int(event.tid)
+            if event.tid in quik.callbacks:
+                callback = quik.callbacks[ tid ]
+                del quik.callbacks[ tid ]
+                if callback:
+                    res = dict()
+                    res["trans_id"] = tid 
+                    res["order_key"] = int( event.order )
+                    res["result"] = event.result
+                    res["error"] = event.errorCode
+                    res["status"] = event.reply
+                    res["message"] = quik.error()
+                    callback( res )
+            return
     except:
         traceback.print_exc(file=sys.stdout)
-
+        quik.stop()

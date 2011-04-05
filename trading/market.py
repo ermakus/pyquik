@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 import datetime
 from trading.ticker import Ticker
-from trading.order import Order, BUY, SELL
 
 class Market:
     """ The root class to access all market data """
 
-    def __init__(self, conn):
+    def __init__(self):
         self.tickers = {}
-        self.conn = conn
 
     def __getattr__(self,name):
         """ Helper method to access ticker as attribute """ 
@@ -43,33 +41,9 @@ class Market:
             fp.close()
 
     def execute(self,cmd,callback=None):
+        """ Execute transaction """
         self.conn.execute( cmd, callback )
-
-
-    def ontick(self,data):
-        """ Quik tickers data handler """
-        ticker = self.ticker( data["seccode"] )
-        ticker.classcode = data["classcode"]
-        ticker.time = datetime.datetime.now()
-        ticker.price = data["price"]
-        ticker.volume = 0
-        ticker.tick()
-
-    ORDER_OP = {"Купля":BUY,"Продажа":SELL}
-
-    def onorder(self,data):
-        state = data["state"]
-        if state == "Снята": return
-        ticker = self.__getattr__( data["seccode"] )
-        order = ticker.order( int( data["order_key"] ) )
-        order.operation = Market.ORDER_OP[ data["operation"] ]
-        order.price = float( data["price"] )
-        order.quantity = int( data["quantity"] )
-        order.quantity_left = int( data["left"] )
 
     def run( self ):
         """ Start message loop """
-        self.conn.register( "TICKERS", {"seccode":"Код бумаги","classcode":"Код класса","price":"Цена послед."}, self.ontick )
-        self.conn.register( "ORDERS", {"order_key":"Номер","seccode":"Код бумаги","operation":"Операция","price":"Цена","quantity":"Кол-во","left":"Остаток","state":"Состояние"}, self.onorder )
         self.conn.run()
-
