@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re, traceback, sys, logging
+from time import sleep
 
 log = logging.getLogger("quik")
 
@@ -118,6 +119,7 @@ cdef class Quik:
             for hwnd in hwnds:
                 log.debug("Starting DDE export")
                 win32gui.PostMessage( hwnd, 0x111, 0x0015C, 0x00 ) # WM_COMMAND 'Stop DDE export'
+                sleep(0.5)
                 win32gui.PostMessage( hwnd, 0x111, 0x1013F, 0x00 ) # WM_COMMAND 'Start DDE export'
         except Exception as ex:
             log.warn("Can't autostart DDE export (%s). Swich to Quik and press Ctrl+Shift+L to start" % ex)

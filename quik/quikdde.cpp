@@ -200,6 +200,10 @@ void Market::run()
 	{
 		if( err == -1 ) 
 			break;
+        if( msg.message == WM_USER ) {
+            m_Callback( &m_EventQueue.front() );
+            m_EventQueue.pop_front();
+        }
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
@@ -261,14 +265,16 @@ void Market::onConnected()
 {
     MarketEvent event;
     event.type = ET_CONNECT;
-    m_Callback( &event );
+    m_EventQueue.push_back( event );
+	::PostThreadMessage( s_dwThreadId, WM_USER, 0, 0 );
 }
 
 void Market::onDisconnected()
 {
     MarketEvent event;
     event.type = ET_DISCONNECT;
-    m_Callback( &event );
+    m_EventQueue.push_back( event );
+	::PostThreadMessage( s_dwThreadId, WM_USER, 0, 0 );
 }
 
 
@@ -282,7 +288,8 @@ void Market::onTransactionResult(long nTransactionResult, long nTransactionExten
     event.reply = nTransactionReplyCode;
     event.tid = dwTransId;
     event.order = dOrderNum;
-    m_Callback( &event );
+    m_EventQueue.push_back( event );
+	::PostThreadMessage( s_dwThreadId, WM_USER, 0, 0 );
 }
 
 BOOL Market::ParseData(Table& table, PBYTE data, DWORD length)

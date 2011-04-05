@@ -77,8 +77,11 @@ class Order:
         self.ticker.market.execute( self.cmd_kill(), self.kill_status )
 
     def kill_status(self,res,err,rep,tid,order,msg):
-        print( msg )
-        if self.onkill: self.onkill( self, err, msg )
+        try:
+            idx = self.ticker.orders.index( self )
+            del self.ticker.orders[idx]
+        except ValueError:
+            print("Can't remove!!! %s" % self )
 
     def __eq__(self, other):
         if not isinstance(other, Order): raise NotImplementedError

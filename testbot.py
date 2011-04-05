@@ -1,28 +1,25 @@
 from quik import Quik
 from trading import Market, Order, Indicator
+import threading
 
-def order_status( order, err, msg ):
-    print( "ORDER STATUS: %s %s %s" % ( order, err, msg ) )
-    order.kill()
+class TestBot:
 
-# Called every price change
-def handle_tick( ticker ):
-    print( "TICK: %s" % ticker )
-#    if len(ticker.orders) == 0:
-#        order = ticker.buy( 106.0, 1 )
-#        order.onstatus = order_status
-#        order.submit()
+    def __init__(self,ticker):
+        self.ticker = ticker
+        self.ticker.ontick( self.tick )
 
-def data_ready():
-    global market
-    print("=== Existing orders ===")
-    for  ticker in market.tickers.values():
-        print("Ticker: %s" % ticker )
-        for o in ticker.orders:
-            print("Order: %s" % o )
+    def tick( self, tick ):
+        order = market.SBER03.buy( 106.0, 1 )
+        order.onstatus = self.order_status
+        order.submit()
+
+    def order_status( self, order, err, msg ):
+        if len(self.ticker.orders) > 3:
+            for order in market.SBER03.orders:
+                if order.order_key: order.kill()
+
 
 market = Market( Quik("c:\\quik-bcs","QuikDDE") )
-market.conn.bind( "ready", data_ready )
-market.conn.bind( "restart", data_ready )
-market.SBER03.ontick( handle_tick )
+robot  = TestBot( market.SBER03 )
+market.conn.bind( "ready", lambda : print("Trading started") )
 market.run()

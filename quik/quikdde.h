@@ -7,6 +7,7 @@
 #include <list>
 #include <string>
 #include <vector>
+#include <deque>
 
 using std::string;
 using std::vector;
@@ -107,7 +108,7 @@ private:
   long		  m_nResult;
   DWORD       m_dwInst;
   HSZ         m_hszService;
-   
+  std::deque<MarketEvent> m_EventQueue;
   MarketCallback m_Callback;
   BOOL ParseData(Table& table, PBYTE data, DWORD length);
 };
