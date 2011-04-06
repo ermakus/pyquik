@@ -2,7 +2,7 @@
 from .order import Order, BUY, SELL, MARKET_PRICE
 from talib.talib import TA_LIB, TA_Func
 import numpy,datetime
-
+from util import Hook
 
 ta_lib = TA_LIB()
 
@@ -44,7 +44,6 @@ class Indicator(Serie):
         src = self.ticker("price").data()
         idx = self.size-1
         self.func(idx, idx, src, self.buf[idx:], **self.kwa)
-
  
 class Ticker:
 
@@ -58,7 +57,7 @@ class Ticker:
         self.classcode = False
         self.series = {}
         self.orders = []
-        self.on_tick = None
+        self.ontick = Hook()
         for name in Ticker.SERIES:
             self.series[ name ] = Serie(self,name,dtype=(numpy.float if name != 'time' else datetime.datetime))
 
@@ -93,12 +92,7 @@ class Ticker:
     def tick(self):
         for name in self.series:
             self.series[name].push( getattr( self, name, None ) )
-        if self.on_tick:
-            self.on_tick( self )
-
-    def ontick(self,callback):
-        self.on_tick = callback
+        self.ontick( self )
 
     def __repr__(self):
         return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in (Ticker.FIELDS + Ticker.SERIES) ]  )
-

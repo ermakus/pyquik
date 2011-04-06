@@ -1,6 +1,6 @@
 import unittest, datetime
 from trading import *
-from util import Hook, cmd2str
+from util import Hook, ReadyHook, cmd2str
 
 class TestMarket(Market):
 
@@ -27,6 +27,17 @@ class TradingTest(unittest.TestCase):
         h -= self.callback
         h(False)
         self.assertTrue( self.hooked )
+
+        rh = ReadyHook(1)
+        rh += self.callback
+        rh(False)
+        self.assertTrue( self.hooked )
+        rh.ready()
+        rh(False)
+        self.assertFalse( self.hooked )
+        rh.start()
+        rh(True)
+        self.assertFalse( self.hooked )
 
     def testFactory(self):
         self.ticker.price = 1.0

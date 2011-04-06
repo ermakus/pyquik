@@ -98,9 +98,9 @@ public:
 
   virtual const char* errorMessage();
 
-  virtual void onConnected();
-  virtual void onDisconnected();
-  virtual void onTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum);
+  virtual void onConnected(const char* msg);
+  virtual void onDisconnected(const char* msg);
+  virtual void onTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, unsigned long dwTransId, double dOrderNum, const char* msg);
   virtual void onTableData( char* topic, char* item, Table* table );
 
 private:
@@ -109,6 +109,7 @@ private:
   DWORD       m_dwInst;
   HSZ         m_hszService;
   std::deque<MarketEvent> m_EventQueue;
+  std::deque<std::string> m_MsgQueue;
   MarketCallback m_Callback;
   BOOL ParseData(Table& table, PBYTE data, DWORD length);
 };

@@ -1,5 +1,6 @@
 #include "quikdde.h"
 #include "trans2quik_api.h"
+#include <stdio.h>
 
 static DWORD	      s_dwThreadId = 0;
 static Market*        s_pMarket = NULL;
@@ -103,15 +104,14 @@ void __stdcall TRANS2QUIK_ConnectionStatusCallback (long nConnectionEvent, long 
 {
 	if( s_pMarket ) 
 	{
-			if(lpcstrInfoMessage) setErrorMessage( lpcstrInfoMessage );
 			if (nConnectionEvent == TRANS2QUIK_DLL_CONNECTED) 
-				s_pMarket->onConnected();
+				s_pMarket->onConnected(lpcstrInfoMessage);
 			if (nConnectionEvent == TRANS2QUIK_DLL_DISCONNECTED) 
-				s_pMarket->onDisconnected();
+				s_pMarket->onDisconnected(lpcstrInfoMessage);
 			if (nConnectionEvent == TRANS2QUIK_QUIK_CONNECTED) 
-				s_pMarket->onConnected();
+				s_pMarket->onConnected(lpcstrInfoMessage);
 			if (nConnectionEvent == TRANS2QUIK_QUIK_DISCONNECTED) 
-				s_pMarket->onDisconnected();
+				s_pMarket->onDisconnected(lpcstrInfoMessage);
 	}
 }
 
@@ -120,8 +120,7 @@ void __stdcall TRANS2QUIK_TransactionsReplyCallback (long nTransactionResult, lo
                                                                 DWORD dwTransId, double dOrderNum, LPCSTR lpcstrTransactionReplyMessage)
 {
 	if( s_pMarket ) {
-        if(lpcstrTransactionReplyMessage) setErrorMessage( lpcstrTransactionReplyMessage );
-		s_pMarket->onTransactionResult(nTransactionResult,nTransactionExtendedErrorCode, nTransactionReplyCode, dwTransId, dOrderNum);
+		s_pMarket->onTransactionResult(nTransactionResult,nTransactionExtendedErrorCode, nTransactionReplyCode, dwTransId, dOrderNum, lpcstrTransactionReplyMessage);
 	}
 }
 
@@ -131,6 +130,8 @@ void __stdcall TRANS2QUIK_TransactionsReplyCallback (long nTransactionResult, lo
 Market::Market(MarketCallback cb) : m_dwInst( 0 ), m_Callback( cb )
 {
     s_pMarket = this;
+	s_dwThreadId = m_dwThreadId = ::GetCurrentThreadId();
+	SetConsoleCtrlHandler( (PHANDLER_ROUTINE)ConsoleHandler,TRUE);
     setErrorMessage("OK");
 }
 
@@ -190,9 +191,6 @@ long Market::sendAsync(const char* trans) {
 
 void Market::run() 
 {
-	s_dwThreadId = m_dwThreadId = ::GetCurrentThreadId();
-	SetConsoleCtrlHandler( (PHANDLER_ROUTINE)ConsoleHandler,TRUE);
-
 	MSG msg;
 	int err;
 	
@@ -201,8 +199,10 @@ void Market::run()
 		if( err == -1 ) 
 			break;
         if( msg.message == WM_USER ) {
+            m_EventQueue.front().topic = (char*)m_MsgQueue.front().c_str();
             m_Callback( &m_EventQueue.front() );
             m_EventQueue.pop_front();
+            m_MsgQueue.pop_front();
         }
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
@@ -261,25 +261,27 @@ void Market::onTableData( char* topic, char* item, Table* table )
     m_Callback( &event );
 }
 
-void Market::onConnected()
+void Market::onConnected(const char* msg)
 {
     MarketEvent event;
     event.type = ET_CONNECT;
+    m_MsgQueue.push_back( cp1251_to_utf8(msg));
     m_EventQueue.push_back( event );
 	::PostThreadMessage( s_dwThreadId, WM_USER, 0, 0 );
 }
 
-void Market::onDisconnected()
+void Market::onDisconnected(const char* msg)
 {
     MarketEvent event;
     event.type = ET_DISCONNECT;
+    m_MsgQueue.push_back( cp1251_to_utf8(msg));
     m_EventQueue.push_back( event );
 	::PostThreadMessage( s_dwThreadId, WM_USER, 0, 0 );
 }
 
 
 void Market::onTransactionResult(long nTransactionResult, long nTransactionExtendedErrorCode, long nTransactionReplyCode, 
-                                        unsigned long dwTransId, double dOrderNum )
+                                        unsigned long dwTransId, double dOrderNum, const char* msg )
 {
     MarketEvent event;
     event.type = ET_TRANS;
@@ -288,6 +290,7 @@ void Market::onTransactionResult(long nTransactionResult, long nTransactionExten
     event.reply = nTransactionReplyCode;
     event.tid = dwTransId;
     event.order = dOrderNum;
+    m_MsgQueue.push_back( cp1251_to_utf8(msg) );
     m_EventQueue.push_back( event );
 	::PostThreadMessage( s_dwThreadId, WM_USER, 0, 0 );
 }

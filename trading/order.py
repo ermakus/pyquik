@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
+from util import Hook
+
 log = logging.getLogger("order")
 
 CLIENT_ACCOUNT="L01-00000F00"
@@ -47,8 +49,8 @@ class Order:
         self.seccode = ticker.seccode
         self.classcode = ticker.classcode
         self.order_key = None
-        self.onstatus = None
-        self.onkill = None
+        self.onstatus = Hook()
+        self.onkilled = Hook()
 
     def cmd_submit(self):
         keys = ['action','trans_id','seccode','classcode','account','client_code','operation','quantity','price']
@@ -68,18 +70,19 @@ class Order:
     def submit(self):
         self.ticker.market.execute( self.cmd_submit(), self.submit_status )
 
-    def submit_status(self,res,err,rep,tid,order,msg):
-        print("Order status: res=%s err=%s rep=%s tid=%s ord=%s msg=%s" % ( res, err, rep, tid, order, msg ) )
-        self.order_key = int(order)
-        if self.onstatus: self.onstatus( self, err, msg )
+    def submit_status(self,status):
+        print("Order status: %s" % status )
+        self.order_key = status["order_key"]
+        self.onstatus( self, status )
 
     def kill(self):
         self.ticker.market.execute( self.cmd_kill(), self.kill_status )
 
-    def kill_status(self,res,err,rep,tid,order,msg):
+    def kill_status(self,status):
         try:
             idx = self.ticker.orders.index( self )
             del self.ticker.orders[idx]
+            self.onkilled(self)
         except ValueError:
             print("Can't remove!!! %s" % self )
 

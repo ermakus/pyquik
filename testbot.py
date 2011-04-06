@@ -3,30 +3,35 @@ from trading import Market, Order, Indicator
 import threading
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger("strategy")
 
 class Strategy:
 
     def __init__(self,ticker):
         self.ticker = ticker
-        self.ticker.ontick( self.tick )
+        self.ticker.ontick += self.tick
         self.ticker.market.conn.onready += self.start
 
     def tick( self, tick ):
-        print("Tick: %s" % tick )
+        log.debug("Tick: %s" % tick )
 
-    def order_status( self, order, err, msg ):
-        print("Order: %s: %s" % ( order, msg ))
+    def order_status( self, order, status ):
+        log.info("Order: %s: %s" % ( order, status ))
+        # Kill executed order immediately
         order.kill()
 
     def start( self ):
-        print("Trading started")
+        log.info("Trading started")
+        # Kill existing orders
+        for o in self.ticker.orders:
+            o.kill()
+        # Create new buy order
         order = self.ticker.buy( 106.0, 1 )
         order.onstatus = self.order_status
         order.submit()
 
-market = QuikMarket( "c:\\quik-bcs","QuikDDE" )
-market.conn.onready += lambda: print("OnReady")
+logging.basicConfig(level=logging.DEBUG)
 
-strategy  = Strategy( market.SBER03 )
+market = QuikMarket( "c:\\quik-bcs","QuikDDE" )
+strategy = Strategy( market.SBER03 )
 market.run()

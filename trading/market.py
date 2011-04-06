@@ -2,6 +2,12 @@
 import datetime
 from trading.ticker import Ticker
 
+
+class Account:
+    def __init__(self,account_id,balance=0.0):
+        self.account_id = account_id
+        self.balance = balance
+
 class Market:
     """ The root class to access all market data """
 
