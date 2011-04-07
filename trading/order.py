@@ -18,108 +18,81 @@ ACTIVE="ACTIVE"
 KILLED="KILLED"
 ERROR="ERROR"
 
-class Order:
-
-    """
-	NEW_ORDER - новая заявка,
-	NEW_NEG_DEAL - новая заявка на внебиржевую сделку,
-	NEW_REPO_NEG_DEAL – новая заявка на сделку РЕПО,
-	NEW_EXT_REPO_NEG_DEAL - новая заявка на сделку модифицированного РЕПО (РЕПО-М),
-	NEW_STOP_ORDER - новая стоп-заявка,
-	KILL_ORDER - снять заявку,
-	KILL_NEG_DEAL - снять заявку на внебиржевую сделку или заявку на сделку РЕПО,
-	KILL_STOP_ORDER - снять стоп-заявку,
-	KILL_ALL_ORDERS – снять все заявки из торговой системы,
-	KILL_ALL_STOP_ORDERS – снять все стоп-заявки,
-	KILL_ALL_NEG_DEALS – снять все заявки на внебиржевые сделки и заявки на сделки РЕПО,
-	KILL_ALL_FUTURES_ORDERS - снять все заявки на рынке FORTS,
-	KILL_RTS_T4_LONG_LIMIT - удалить лимит открытых позиций на спот-рынке RTS Standard, 
-	KILL_RTS_T4_SHORT_LIMIT - удалить лимит открытых позиций клиента по спот-активу на рынке RTS Standard,
-	MOVE_ORDERS - переставить заявки на рынке FORTS,
-	NEW_QUOTE - новая безадресная заявка,
-	KILL_QUOTE - снять безадресную заявку,
-	NEW_REPORT - новая  заявка-отчет о подтверждении транзакций в режимах РПС и РЕПО,
-	SET_FUT_LIMIT - новое ограничение по фьючерсному счету
-    """
+class BaseOrder:
 
     LAST_ID = 0
 
-    def __init__(self,ticker, operation=BUY, price=MARKET_PRICE, quantity=1):
+    def __init__(self,ticker):
         Order.LAST_ID +=1
         self.ticker = ticker
         self.trans_id = Order.LAST_ID
+        self.order_key = None
         self.account = CLIENT_ACCOUNT
         self.client_code = CLIENT_CODE
-        self.operation = operation
-        self.price = price
-        self.quantity = quantity
         self.seccode = ticker.seccode
         self.classcode = ticker.classcode
-        self.order_key = None
         self.status = NEW
         self.onstatus = Hook()
         self.onexecuted = ReadyHook()
         self.onregistered = ReadyHook()
         self.onkilled = ReadyHook()
-
-    def cmd_submit(self):
-        keys = ['action','trans_id','seccode','classcode','account','client_code','operation','quantity','price']
-        vals = [  getattr( self, x, None ) for x in keys ]
-        vals[0] = 'NEW_ORDER'
-        return dict( zip( keys, vals ) )
-
-    def cmd_kill(self):
-        Order.LAST_ID +=1
-        if not self.order_key: raise Exception("Can't kill unregistered order")
-        keys = ['action','trans_id','seccode','classcode','order_key']
-        vals = [  getattr( self, x, None ) for x in keys ]
-        vals[0] = 'KILL_ORDER'
-        vals[1] = Order.LAST_ID
-        return dict( zip( keys, vals ) )
- 
-    def submit(self):
-        self.ticker.market.execute( self.cmd_submit(), self.submit_status )
-
-    def submit_status(self,status):
-        self.order_key = status["order_key"]
-        self.onstatus( self, status )
-
-    def kill(self):
-        self.ticker.market.execute( self.cmd_kill(), self.kill_status )
-
-    def kill_status(self,status):
-        try:
-            idx = self.ticker.orders.index( self )
-            del self.ticker.orders[idx]
-            self.onkilled(self)
-        except ValueError:
-            print("Can't remove!!! %s" % self )
+        self.keys = ['action','trans_id','seccode','classcode','account','client_code']
 
     def __eq__(self, other):
         if not isinstance(other, Order): raise NotImplementedError
         return self.order_key==other.order_key
 
     def __repr__(self):
-        return "Order: (%s) %.2f [%s]" % ( self.operation, self.price, self.status)
+        return "%s: %s" % ( self.action, self.status)
+
+    def submit(self):
+        vals = [ getattr( self, x, None ) for x in self.keys ]
+        cmd = dict( zip( self.keys, vals ) )
+        self.ticker.market.execute( cmd, self.submit_status )
+
+    def submit_status(self,status):
+        self.order_key = status["order_key"]
+        if not self.order_key:
+            raise Exception( status["message"] )
+        self.status = ACTIVE
+        self.onregistered()
+
+class Order(BaseOrder):
+
+    def __init__(self, ticker, operation=BUY, price=MARKET_PRICE, quantity=1):
+        BaseOrder.__init__(self,ticker)
+        self.action = "NEW_ORDER"
+        self.operation = operation
+        self.price = price
+        self.quantity = quantity
+        self.keys += ['operation','quantity','price']
+
+    def kill(self):
+        o = KillOrder(self)
+        o.submit()
+
+class KillOrder(BaseOrder):
+
+    def __init__(self, order):
+        BaseOrder.__init__(self, order.ticker)
+        assert order.action == "NEW_ORDER"
+        assert not order.order_key is None
+        self.action = "KILL_ORDER"
+        self.order_key = order.order_key
+        self.keys = ['action','trans_id','seccode','classcode','order_key']
 
 class StopOrder(Order):
 
-    def __init__(self,ticker, operation=BUY, price=MARKET_PRICE, quantity=1):
-        Order.__init__(self, ticker, operation, price, quantity)
+    def __init__(self, ticker):
+        Order.__init__(self, ticker)
         self.stopprice=100.0
         self.expiry_date="20110401"
+        self.action = "NEW_STOP_ORDER"
+        self.keys += ['operation','quantity','price']
 
-    def cmd_submit(self):
-        keys = ['action','trans_id','seccode','classcode','account','client_code','operation','quantity','price','stopprice','expiry_date']
-        vals = [  getattr( self, x, None ) for x in keys ]
-        vals[0] = 'NEW_STOP_ORDER'
-        return dict( zip( keys, vals ) )
+class KillStopOrder(KillOrder):
 
-    def cmd_kill(self):
-        Order.LAST_ID +=1
-        if not self.order_key: raise Exception("Can't kill unregistered order")
-        keys = ['action','trans_id','seccode','classcode','order_key']
-        vals = [  getattr( self, x, None ) for x in keys ]
-        vals[0] = 'KILL_STOP_ORDER'
-        vals[1] = Order.LAST_ID
-        return dict( zip( keys, vals ) )
+    def __init__(self, order):
+        KillOrder._init__(self, order)
+        assert order.action == "NEW_STOP_ORDER"
+        self.action = "KILL_STOP_ORDER"

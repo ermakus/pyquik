@@ -10,7 +10,7 @@ class Strategy:
 
     def __init__(self,ticker):
         self.ticker = ticker
-        self.broker = Broker( ticker )
+        self.broker = Broker()
         self.ticker.ontick += self.tick
         self.ticker.market.conn.onready += self.start
         self.start_gap = 30
@@ -33,11 +33,11 @@ class Strategy:
         log.info("PRICE %s sum %s", tick.price, ssum)
 
         if ssum == 5.0:
-            self.broker.trade( TRADE_LONG, tick.price + 0.01 )
+            self.broker.trade( TRADE_LONG, tick )
 
         if ssum == 0.0: 
             log.info("SELL %s", tick.price)
-            self.broker.trade( TRADE_SHORT, tick.price - 0.01 )
+            self.broker.trade( TRADE_SHORT, tick )
  
     def start( self ):
         log.info("Trading started")

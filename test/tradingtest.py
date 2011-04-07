@@ -1,5 +1,6 @@
 import unittest, datetime
 from trading import *
+from trading.broker import *
 from util import Hook, ReadyHook, cmd2str
 
 class TestMarket(Market):
@@ -39,7 +40,7 @@ class TradingTest(unittest.TestCase):
         rh(True)
         self.assertFalse( self.hooked )
 
-    def testFactory(self):
+    def testTicker(self):
         self.ticker.price = 1.0
         self.assertEquals(self.ticker.price, self.market.SBER.price)
 
@@ -66,7 +67,6 @@ class TradingTest(unittest.TestCase):
         B = self.ticker.indicator("MA-30","MA").data()
         for i in range( len(A) ): self.assertAlmostEqual( A[i], B[i] )
 
-
     def testOrderCreation(self):
         o1 = self.market.SBER.order( 100 )
         self.assertEquals( o1.order_key, 100 )
@@ -88,6 +88,22 @@ class TradingTest(unittest.TestCase):
         order.order_key = "OK-%s" % order.trans_id
         order.kill()
         self.assertEquals( self.market.last_cmd, "ACTION=KILL_ORDER;SECCODE=SBER;CLASSCODE=SBERCC;TRANS_ID=3;ORDER_KEY=OK-2" )
+
+    def testBroker(self):
+        Order.LAST_ID=0
+        broker = Broker()
+        self.ticker("price").set(100.0)
+        o = broker.trade( TRADE_SHORT, self.ticker )
+        self.assertEquals( self.market.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=S;SECCODE=SBER;TRANS_ID=1;QUANTITY=1" )
+        o.submit_status({"order_key":"100"})
+        broker.trade( TRADE_IDLE, self.ticker )
+        self.assertEquals( self.market.last_cmd, "ACTION=KILL_ORDER;SECCODE=SBER;CLASSCODE=SBERCC;TRANS_ID=2;ORDER_KEY=100" )
+        o = broker.trade( TRADE_LONG, self.ticker )
+        self.assertEquals( self.market.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=B;SECCODE=SBER;TRANS_ID=3;QUANTITY=1" )
+        o.submit_status({"order_key":"100"})
+        o.status = EXECUTED 
+        broker.trade( TRADE_SHORT, self.ticker )
+        self.assertEquals( self.market.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=S;SECCODE=SBER;TRANS_ID=4;QUANTITY=2" )
 
 if __name__ == '__main__':
     suite = unittest.TestSuite()
