@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging
-from util import Hook
+from util import Hook, ReadyHook
 
 log = logging.getLogger("order")
 
@@ -10,6 +10,13 @@ CLIENT_CODE=52709
 MARKET_PRICE=0
 BUY="B"
 SELL="S"
+
+# Order statuses
+NEW="NEW"
+EXECUTED="EXECUTED"
+ACTIVE="ACTIVE"
+KILLED="KILLED"
+ERROR="ERROR"
 
 class Order:
 
@@ -49,8 +56,11 @@ class Order:
         self.seccode = ticker.seccode
         self.classcode = ticker.classcode
         self.order_key = None
+        self.status = NEW
         self.onstatus = Hook()
-        self.onkilled = Hook()
+        self.onexecuted = ReadyHook()
+        self.onregistered = ReadyHook()
+        self.onkilled = ReadyHook()
 
     def cmd_submit(self):
         keys = ['action','trans_id','seccode','classcode','account','client_code','operation','quantity','price']
@@ -71,7 +81,6 @@ class Order:
         self.ticker.market.execute( self.cmd_submit(), self.submit_status )
 
     def submit_status(self,status):
-        print("Order status: %s" % status )
         self.order_key = status["order_key"]
         self.onstatus( self, status )
 
@@ -91,7 +100,7 @@ class Order:
         return self.order_key==other.order_key
 
     def __repr__(self):
-        return "ORDER_KEY=%s;%s" % ( self.order_key, self.cmd_submit())
+        return "Order: (%s) %.2f [%s]" % ( self.operation, self.price, self.status)
 
 class StopOrder(Order):
 

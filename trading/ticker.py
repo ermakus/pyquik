@@ -18,7 +18,7 @@ class Serie:
 
     def push(self, value):
         if self.size >= len(self.buf):
-            self.buf.resize( self.size + Serie.ALLOC_BLOCK )
+            self.buf.resize( self.size + Serie.ALLOC_BLOCK, refcheck=0 )
         self.buf[ self.size ] = value
         self.size += 1
 
@@ -27,6 +27,10 @@ class Serie:
 
     def value(self,offset=0):
         return self.buf[self.size-1-offset]
+
+    def set(self,value):
+        if self.size > 0: self.buf[self.size-1] = value
+        setattr( self.ticker, self.name, value )
 
 class Indicator(Serie):
 
@@ -40,7 +44,7 @@ class Indicator(Serie):
             self.buf.resize( src_len )
             self.size = src_len
             shift, num = self.func(0, src_len-1, src, self.buf)
-            self.buf = numpy.roll( self.buf, shift )
+            self.buf = numpy.array( numpy.roll( self.buf, shift ), copy=True )
             setattr( self.ticker, self.name, self.value() )
 
     def push(self,last_price):

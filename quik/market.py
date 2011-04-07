@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import datetime
 from trading import market
-from trading.order import Order, BUY, SELL
+from trading.order import Order, BUY, SELL, EXECUTED, ACTIVE, KILLED
 from quik.quik import Quik
     
 ORDER_OP = {"Купля":BUY,"Продажа":SELL}
@@ -40,10 +40,18 @@ class QuikMarket(market.Market):
 
     def onorder(self,data):
         state = data["state"]
-        if state == "Снята": return
         ticker = self.__getattr__( data["seccode"] )
         order = ticker.order( int( data["order_key"] ) )
         order.operation = ORDER_OP[ data["operation"] ]
         order.price = float( data["price"] )
         order.quantity = int( data["quantity"] )
         order.quantity_left = int( data["left"] )
+        if state == "Исполнена": 
+            order.status = EXECUTED
+            order.onexecuted()
+        if state == "Активна": 
+            order.status = ACTIVE
+            order.onregistered()
+        if state == "Снята": 
+            order.status = KILLED
+            order.onkilled()
