@@ -25,11 +25,14 @@ class Serie:
     def data(self):
         return self.buf[:self.size]
 
+    def value(self,offset=0):
+        return self.buf[self.size-1-offset]
+
 class Indicator(Serie):
 
-    def __init__(self,ticker, name, **kwargs):
+    def __init__(self,ticker, name, func, **kwargs):
         Serie.__init__(self,ticker,name)
-        self.func = ta_lib.func( name )
+        self.func = ta_lib.func( func )
         self.kwa = kwargs
         src = self.ticker("price").data()
         src_len = len(src)
@@ -38,16 +41,16 @@ class Indicator(Serie):
             self.size = src_len
             shift, num = self.func(0, src_len-1, src, self.buf)
             self.buf = numpy.roll( self.buf, shift )
+            setattr( self.ticker, self.name, self.value() )
 
-    def push(self,value):
+    def push(self,last_price):
         Serie.push( self, 0.0 )
         src = self.ticker("price").data()
         idx = self.size-1
         self.func(idx, idx, src, self.buf[idx:], **self.kwa)
+        setattr( self.ticker, self.name, self.buf[idx] )
  
 class Ticker:
-
-    FIELDS =['seccode','classcode']
 
     SERIES = ['time','price','volume']
 
@@ -56,6 +59,7 @@ class Ticker:
         self.seccode = name
         self.classcode = False
         self.series = {}
+        self.indicators = {}
         self.orders = []
         self.ontick = Hook()
         for name in Ticker.SERIES:
@@ -64,11 +68,19 @@ class Ticker:
     def __iter__(self):
         return serie.__iter__()
 
-    def __call__(self,name,stype=Serie, **kwargs):
+    def __call__(self,name):
         if name in self.series:
             return self.series[name]
-        serie = self.series[name] = Indicator( self, name, **kwargs )
+        serie = self.series[name] = Serie( self, name)
         return serie
+
+    def indicator(self,name,func=None, **kwargs):
+        if name in self.indicators:
+            return self.indicators[name]
+        if not func:
+            raise Exception("Indicator function not set")
+        ind = self.indicators[name] = Indicator( self, name, func, **kwargs )
+        return ind
 
     def buy(self,price=MARKET_PRICE,quantity=1):
         o = Order(self,BUY, price, quantity)
@@ -90,9 +102,11 @@ class Ticker:
             return tmp
 
     def tick(self):
-        for name in self.series:
-            self.series[name].push( getattr( self, name, None ) )
+        for serie in self.series.values():
+            serie.push( getattr( self, serie.name, None ) )
+        for ind in self.indicators.values():
+            ind.push( self.price )
         self.ontick( self )
 
     def __repr__(self):
-        return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in (Ticker.FIELDS + Ticker.SERIES) ]  )
+        return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in Ticker.SERIES ] )

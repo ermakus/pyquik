@@ -58,12 +58,12 @@ class TradingTest(unittest.TestCase):
         self.assertEquals(self.ticker('time').size, 1000)
 
     def testIndicator(self):
-        ind = self.ticker("MA", Indicator)
+        ind = self.ticker.indicator("MA-30", "MA")
         self.market.load("test/testdata-1000.txt")
-        self.assertEquals(self.ticker('time').size, 1000)
+        self.assertEquals(self.ticker.indicator('MA-30').size, 1000)
         A = ind.data()
-        del( self.ticker.series["MA"] )
-        B = self.ticker("MA").data()
+        del( self.ticker.indicators["MA-30"] )
+        B = self.ticker.indicator("MA-30","MA").data()
         for i in range( len(A) ): self.assertAlmostEqual( A[i], B[i] )
 
 
