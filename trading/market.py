@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
-import datetime
+import datetime, logging
 from trading.ticker import Ticker
+from trading.broker import Broker
+from util import cmd2str
 
-
-class Account:
-    def __init__(self,account_id,balance=0.0):
-        self.account_id = account_id
-        self.balance = balance
+log = logging.getLogger("market")
 
 class Market:
     """ The root class to access all market data """
 
     def __init__(self):
         self.tickers = {}
+        self.strategies = {} 
+        self.broker = Broker()
 
     def __getattr__(self,name):
         """ Helper method to access ticker as attribute """ 
@@ -42,12 +42,25 @@ class Market:
                 ticker.time = datetime.datetime.strptime(row[ IDX_DATE ]+row[ IDX_TIME ], '%Y%m%d%H%M%S')
                 ticker.price = float(row[ IDX_LAST ])
                 ticker.volume = float(row[ IDX_VOL ])
-                ticker.tick()
+                self.tick(ticker)
         finally:
             fp.close()
 
-    def execute(self,cmd,callback=None):
+    def add_strategy(self,strategy):
+        self.strategies[ strategy.name ] = strategy
+
+    def tick(self, ticker):
+        ticker.tick()
+        for strategy in self.strategies.values():
+            if ticker in strategy.tickers:
+                position = strategy.trade( ticker )
+                #log.debug("Strategy: %s -> %s", strategy.name, "IDLE" if position != 0 else ("LONG" if position > 0 else "SHORT") )
+                self.broker.trade( position, ticker )
+
+    def execute(self,order,callback=None):
         """ Execute transaction """
+        vals = [ getattr( order, x, None ) for x in order.keys ]
+        cmd = dict( zip( order.keys, vals ) )
         self.conn.execute( cmd, callback )
 
     def run( self ):

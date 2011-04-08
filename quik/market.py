@@ -28,6 +28,9 @@ class QuikMarket(market.Market):
             "left":"Остаток",
             "state":"Состояние"
         }, self.onorder )
+
+    def onbook(self,data):
+        print(data)
  
     def ontick(self,data):
         """ Quik tickers data handler """
@@ -36,7 +39,7 @@ class QuikMarket(market.Market):
         ticker.time = datetime.datetime.now()
         ticker.price = data["price"]
         ticker.volume = 0
-        ticker.tick()
+        self.tick(ticker)
 
     def onorder(self,data):
         state = data["state"]

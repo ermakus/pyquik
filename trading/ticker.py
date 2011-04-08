@@ -60,11 +60,12 @@ class Ticker:
 
     def __init__(self,market,name):
         self.market = market
-        self.seccode = name
+        self.name = self.seccode = name
         self.classcode = False
         self.series = {}
         self.indicators = {}
         self.orders = []
+        self.price = 0.0
         self.ontick = Hook()
         for name in Ticker.SERIES:
             self.series[ name ] = Serie(self,name,dtype=(numpy.float if name != 'time' else datetime.datetime))
@@ -113,4 +114,4 @@ class Ticker:
         self.ontick( self )
 
     def __repr__(self):
-        return ";".join( [ "%s=%s" % ( x.upper(), getattr( self, x) ) for x in Ticker.SERIES ] )
+        return "%s: %.2f" % (self.name, self.price)

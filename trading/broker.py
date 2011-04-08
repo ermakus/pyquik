@@ -1,7 +1,8 @@
 import logging
 from trading.order import *
 
-TRADE_IDLE=0
+TRADE_KEEP=None
+TRADE_EXIT=0
 TRADE_LONG=1
 TRADE_SHORT=-1
 
@@ -10,42 +11,55 @@ log = logging.getLogger("broker")
 class Broker:
 
     def __init__(self):
-        self.position = TRADE_IDLE
-        self.handlers = { TRADE_IDLE: self.trade_idle, TRADE_LONG: self.trade_long, TRADE_SHORT:self.trade_short }
-        self.long_order = None
-        self.short_order = None
-
-    def trade_idle( self, ticker ):
-        pass
+        self.position = TRADE_EXIT
+        self.handlers = { TRADE_EXIT: self.trade_exit, TRADE_LONG: self.trade_long, TRADE_SHORT:self.trade_short }
+        self.order = None
 
     def trade_cancel( self, ticker ):
-        log.info("Exiting %s" % self )
-        if self.short_order and self.short_order.status in [NEW,ACTIVE]:
-            self.short_order.kill()
-            self.short_order = None
-        if self.long_order and self.long_order.status in [NEW,ACTIVE]:
-            self.long_order.kill()
-            self.long_order = None
+        if self.order and self.order.status in [NEW,ACTIVE]:
+            log.info("Kill %s", self.order )
+            self.order.kill()
+            self.order = None
+
+    def trade_exit( self, ticker ):
+        if self.order:
+            if self.order.operation == BUY:
+                self.order = ticker.sell( ticker.price )
+                self.order.submit()
+                log.debug("Exit %s", self.order )
+                return self.order
+            if self.order.operation == SELL:
+                self.order = ticker.buy( ticker.price )
+                self.order.submit()
+                log.debug("Exit %s", self.order )
+                return self.order
+        return self.order
 
     def trade_long( self, ticker ):
-        log.info("Entering long: %s" % self)
-        if self.short_order:
-            self.long_order = ticker.buy( ticker.price, self.short_order.quantity + 1 )
-            self.short_order = None
+        log.info("Enter long: %s" % self)
+        if self.order:
+            if self.order.operation == SELL:
+                self.order = ticker.buy( ticker.price, self.order.quantity + 1 )
+                self.order.submit()
+            else:
+                raise Exception("Invalid state - open long twice")
         else:
-            self.long_order = ticker.buy( ticker.price )
-        self.long_order.submit()
-        return self.long_order
+            self.order = ticker.buy( ticker.price )
+            self.order.submit()
+        return self.order
 
     def trade_short( self, ticker ):
-        log.info("Entering short: %s" % self )
-        if self.long_order:
-            self.short_order = ticker.sell( ticker.price, self.long_order.quantity + 1 )
-            self.long_order = None
+        log.info("Enter short: %s" % self)
+        if self.order:
+            if self.order.operation == BUY:
+                self.order = ticker.sell( ticker.price, self.order.quantity + 1 )
+                self.order.submit()
+            else:
+                raise Exception("Invalid state - open short twice")
         else:
-            self.short_order = ticker.sell( ticker.price )
-        self.short_order.submit()
-        return self.short_order
+            self.order = ticker.sell( ticker.price )
+            self.order.submit()
+        return self.order
 
     def trade( self, position, ticker ):
         """Trade position
@@ -56,13 +70,15 @@ class Broker:
         ticker:
             Ticker instance to trade
         """
+        if position == TRADE_KEEP:
+            return
+
         if self.position == position:
             return
 
         self.position = position
-
         self.trade_cancel( ticker )
         return self.handlers[ position ]( ticker )
 
     def __repr__(self):
-        return "Short: %s Long: %s" % ( self.short_order, self.long_order )
+        return "Order: %s" % ( self.order )

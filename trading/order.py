@@ -46,9 +46,7 @@ class BaseOrder:
         return "%s: %s" % ( self.action, self.status)
 
     def submit(self):
-        vals = [ getattr( self, x, None ) for x in self.keys ]
-        cmd = dict( zip( self.keys, vals ) )
-        self.ticker.market.execute( cmd, self.submit_status )
+       self.ticker.market.execute( self, self.submit_status )
 
     def submit_status(self,status):
         self.order_key = status["order_key"]
@@ -56,6 +54,10 @@ class BaseOrder:
             raise Exception( status["message"] )
         self.status = ACTIVE
         self.onregistered()
+
+    def delete(self):
+        idx = self.ticker.orders.index( self )
+        del self.ticker.orders[ idx ]
 
 class Order(BaseOrder):
 
@@ -70,6 +72,10 @@ class Order(BaseOrder):
     def kill(self):
         o = KillOrder(self)
         o.submit()
+
+    def __repr__(self):
+        return "%s: %s (type: %s price: %.2f)" % ( self.action, self.status, self.operation, self.price)
+
 
 class KillOrder(BaseOrder):
 

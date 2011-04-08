@@ -3,10 +3,19 @@ from trading import *
 from trading.broker import *
 from util import Hook, ReadyHook, cmd2str
 
+
+class TestConn:
+    def __init__(self, market):
+        self.market = market
+
+    def execute( self, cmd, callback ):
+        self.market.last_cmd = cmd2str(cmd)
+
 class TestMarket(Market):
 
-    def execute(self,cmd,callback):
-        self.last_cmd = cmd2str( cmd )
+    def __init__(self):
+        Market.__init__(self)
+        self.conn = TestConn( self )
 
 
 class TradingTest(unittest.TestCase):
@@ -96,15 +105,19 @@ class TradingTest(unittest.TestCase):
         o = broker.trade( TRADE_SHORT, self.ticker )
         self.assertEquals( self.market.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=S;SECCODE=SBER;TRANS_ID=1;QUANTITY=1" )
         o.submit_status({"order_key":"100"})
-        broker.trade( TRADE_IDLE, self.ticker )
+        broker.trade( TRADE_EXIT, self.ticker )
         self.assertEquals( self.market.last_cmd, "ACTION=KILL_ORDER;SECCODE=SBER;CLASSCODE=SBERCC;TRANS_ID=2;ORDER_KEY=100" )
         o = broker.trade( TRADE_LONG, self.ticker )
         self.assertEquals( self.market.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=B;SECCODE=SBER;TRANS_ID=3;QUANTITY=1" )
-        o.submit_status({"order_key":"100"})
+        o.submit_status({"order_key":"101"})
         o.status = EXECUTED 
-        broker.trade( TRADE_SHORT, self.ticker )
+        o = broker.trade( TRADE_SHORT, self.ticker )
         self.assertEquals( self.market.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=S;SECCODE=SBER;TRANS_ID=4;QUANTITY=2" )
-
+        o.submit_status({"order_key":"102"})
+        o.status = EXECUTED 
+        o = broker.trade( TRADE_EXIT, self.ticker )
+        self.assertEquals( self.market.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=B;SECCODE=SBER;TRANS_ID=5;QUANTITY=1" )
+ 
 if __name__ == '__main__':
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(TradingTest))

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from trading import Market, Order, Indicator, Serie, MARKET_PRICE
-from trading.broker import Broker, TRADE_LONG, TRADE_SHORT, TRADE_IDLE
+from trading.broker import Broker, TRADE_LONG, TRADE_EXIT, TRADE_KEEP
 
 import logging, sys
 
@@ -8,18 +8,20 @@ log = logging.getLogger("strategy")
 
 class Strategy:
 
-    def __init__(self,ticker):
-        self.ticker = ticker
-        self.broker = Broker()
-        self.ticker.ontick += self.tick
-        self.ticker.market.conn.onready += self.start
-        self.start_gap = 30
+    def __init__(self,name,tickers):
+        self.start_gap = 100
+        self.name = name
+        self.tickers = tickers
 
-    def tick( self, tick ):
+        for ticker in tickers:
+            ticker.indicator("MA1", "MA", optInTimePeriod=self.start_gap)
+            ticker("signal").set(0)
+
+    def trade( self, tick ):
         size = tick("price").size 
         if size < self.start_gap: 
             log.debug("Collecting data: %d/%d" ,size, self.start_gap )
-            return
+            return TRADE_KEEP
 
         signal = tick("signal")
 
@@ -29,32 +31,25 @@ class Strategy:
             signal.set( 0 )
 
         ssum = sum(signal.data()[-5:]) 
-#        log.debug("Price %.2f, MA: %.2f, ssum: %d" % ( tick.price, tick.MA1, ssum ))
-        log.info("PRICE %s sum %s", tick.price, ssum)
+#        log.info("PRICE %s SIGNAL -> %s <-", tick.price, ssum)
 
-        if ssum == 5.0:
-            self.broker.trade( TRADE_LONG, tick )
+        if ssum == 5.0: return TRADE_LONG
+        if ssum == 0.0: return TRADE_EXIT
 
-        if ssum == 0.0: 
-            log.info("SELL %s", tick.price)
-            self.broker.trade( TRADE_SHORT, tick )
- 
-    def start( self ):
-        log.info("Trading started")
-        self.ticker.indicator("MA1", "MA", optInTimePeriod=self.start_gap)
-        self.ticker("signal").set(0)
+        return TRADE_KEEP
 
-logging.basicConfig(level=logging.DEBUG)
 
 if __name__ == "__main__":
+
+    logging.basicConfig(level=logging.DEBUG)
 
     if len(sys.argv) == 2:
         from trading.backtest import BacktestMarket
         market = BacktestMarket()
-        strategy = Strategy( market.SBER )
+        market.add_strategy( Strategy( "Bankruptsy", [market.SBER] ) )
         market.load( sys.argv[1] )
     else:
         from quik.market import QuikMarket
         market = QuikMarket( "c:\\quik-bcs","QuikDDE" )
-        strategy = Strategy( market.SBER03 )
+        market.add_strategy( Strategy( "Bankruptsy", [market.SBER] ) )
         market.run()
