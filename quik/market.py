@@ -52,9 +52,11 @@ class QuikMarket(market.Market):
         if state == "Исполнена": 
             order.status = EXECUTED
             order.onexecuted()
+            order.delete()
         if state == "Активна": 
             order.status = ACTIVE
             order.onregistered()
         if state == "Снята": 
             order.status = KILLED
             order.onkilled()
+            order.delete()
