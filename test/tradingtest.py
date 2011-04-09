@@ -1,5 +1,6 @@
 import unittest, datetime
 from trading import *
+from trading.backtest import BacktestMarket
 from trading.broker import *
 from util import Hook, ReadyHook, cmd2str
 
@@ -11,18 +12,21 @@ class TestConn:
     def execute( self, cmd, callback ):
         self.market.last_cmd = cmd2str(cmd)
 
-class TestMarket(Market):
+class TestMarket(BacktestMarket):
 
     def __init__(self):
-        Market.__init__(self)
+        BacktestMarket.__init__(self)
         self.conn = TestConn( self )
+
+    def execute( self, cmd, callback ):
+        Market.execute( self, cmd, callback )
 
 
 class TradingTest(unittest.TestCase):
 
     def setUp(self):
         self.market = TestMarket()
-        self.ticker = self.market.SBER
+        self.ticker = self.market["SBER"]
         self.ticker.classcode = "SBERCC"
 
     def callback(self, val):
@@ -51,7 +55,7 @@ class TradingTest(unittest.TestCase):
 
     def testTicker(self):
         self.ticker.price = 1.0
-        self.assertEquals(self.ticker.price, self.market.SBER.price)
+        self.assertEquals(self.ticker.price, self.market["SBER"].price)
 
     def testSeries(self):
         self.ticker.time = datetime.datetime.now()
@@ -77,21 +81,21 @@ class TradingTest(unittest.TestCase):
         for i in range( len(A) ): self.assertAlmostEqual( A[i], B[i] )
 
     def testOrderCreation(self):
-        o1 = self.market.SBER.order( 100 )
+        o1 = self.market["SBER"].order( 100 )
         self.assertEquals( o1.order_key, 100 )
         o1.price = 555
-        o2 = self.market.SBER.order( 100 )
+        o2 = self.market["SBER"].order( 100 )
         self.assertEquals( o2.price, 555 )
 
     def testOrderExecution(self):
         Order.LAST_ID=0
-        order = self.market.SBER.buy(100,1)
+        order = self.market["SBER"].buy(100,1)
         self.assertEquals( order.operation, BUY )
         self.assertEquals( order.price, 100 )
         self.assertEquals( order.quantity, 1 )
         order.submit()
         self.assertEquals( self.market.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=B;SECCODE=SBER;TRANS_ID=1;QUANTITY=1")
-        order = self.market.SBER.sell(MARKET_PRICE,10)
+        order = self.market["SBER"].sell(MARKET_PRICE,10)
         order.submit()
         self.assertEquals( self.market.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=0.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=S;SECCODE=SBER;TRANS_ID=2;QUANTITY=10" )
         order.order_key = "OK-%s" % order.trans_id

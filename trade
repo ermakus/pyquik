@@ -9,7 +9,7 @@ log = logging.getLogger("strategy")
 class Strategy:
 
     def __init__(self,name,tickers):
-        self.start_gap = 50 
+        self.start_gap = 100 
         self.name = name
         self.tickers = tickers
 
@@ -39,17 +39,30 @@ class Strategy:
         return TRADE_KEEP
 
 
-if __name__ == "__main__":
+def main():
 
-    logging.basicConfig(level=logging.DEBUG)
+#    logging.basicConfig(level=logging.DEBUG)
 
     if len(sys.argv) == 2:
         from trading.backtest import BacktestMarket
         market = BacktestMarket()
-        market.add_strategy( Strategy( "Bankruptsy", [market.SBER] ) )
+        market.add_strategy( Strategy( "Bankruptsy", [market["SBER"]] ) )
         market.load( sys.argv[1] )
     else:
         from quik.market import QuikMarket
         market = QuikMarket( "c:\\quik-bcs","QuikDDE" )
-        market.add_strategy( Strategy( "Bankruptsy", [market.SBER03] ) )
+        market.add_strategy( Strategy( "Bankruptsy", [market["SBER03"]] ) )
         market.run()
+
+def profile():
+    import hotshot, hotshot.stats
+    prof = hotshot.Profile("trade.prof")
+    prof.runcall(main)
+    prof.close()
+    stats = hotshot.stats.load("trade.prof")
+    stats.strip_dirs()
+    stats.sort_stats('time', 'calls')
+    stats.print_stats(50)
+
+if __name__ == "__main__":
+    main()

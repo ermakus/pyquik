@@ -8,7 +8,7 @@ ta_lib = TA_LIB()
 
 class Serie:
 
-    ALLOC_BLOCK=1024
+    ALLOC_BLOCK=65536
 
     def __init__(self,ticker, name, dtype=numpy.float):
         self.ticker = ticker
@@ -18,7 +18,7 @@ class Serie:
 
     def push(self, value):
         if self.size >= len(self.buf):
-            self.buf.resize( self.size + Serie.ALLOC_BLOCK, refcheck=0 )
+            self.buf.resize( self.size + Serie.ALLOC_BLOCK )
         self.buf[ self.size ] = value
         self.size += 1
 
@@ -38,20 +38,19 @@ class Indicator(Serie):
         Serie.__init__(self,ticker,name)
         self.func = ta_lib.func( func )
         self.kwa = kwargs
-        src = self.ticker("price").data()
-        src_len = len(src)
+        self.src = self.ticker("price")
+        src_len = self.src.size
         if src_len:
             self.buf.resize( src_len )
             self.size = src_len
-            shift, num = self.func(0, src_len-1, src, self.buf)
+            shift, num = self.func(0, src_len-1, self.src.buf, self.buf)
             self.buf = numpy.array( numpy.roll( self.buf, shift ), copy=True )
             setattr( self.ticker, self.name, self.value() )
 
     def push(self,last_price):
         Serie.push( self, 0.0 )
-        src = self.ticker("price").data()
         idx = self.size-1
-        self.func(idx, idx, src, self.buf[idx:], **self.kwa)
+        self.func(idx, idx, self.src.buf, self.buf[idx:], **self.kwa)
         setattr( self.ticker, self.name, self.buf[idx] )
  
 class Ticker:
