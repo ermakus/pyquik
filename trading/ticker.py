@@ -113,8 +113,8 @@ class Ticker:
         self.orders.append(o)
         return o
 
-    def strategy(self,cls):
-        self.strategies[cls] = cls(self)
+    def strategy(self,cls,*args,**kwargs):
+        self.strategies[cls] = cls(self,*args,**kwargs)
 
     def trade(self):
         for serie in self.series.values():

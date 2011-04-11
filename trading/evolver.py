@@ -10,15 +10,18 @@ from pyevolve import DBAdapters
 
 from trading.backtest import BacktestMarket
 from trading.strategy import Strategy
+import datetime
 
 class Evolver:
-    def __init__(self,filename):
+    def __init__(self,filename, gen=10, pop=10):
         self.filename = filename
+        self.gen = gen
+        self.pop = pop
 
     def fitness(self, genome):
-        print(genome)
         market = BacktestMarket()
-        market.add_strategy( Strategy( "Bankruptsy", [market["SBER"]], genome[1] ) )
+        ticker = market["SBER"]
+        ticker.candle( datetime.timedelta( minutes=1) ).strategy(Strategy, genome[0], genome[1])
         market.load( self.filename )
         return market.balance
 
@@ -31,8 +34,6 @@ class Evolver:
         alleles.add(GAllele.GAlleleList([0,1,2,3,4]))
         # MA range
         alleles.add(GAllele.GAlleleRange(1, 99))
-        # MA condition
-        alleles.add(GAllele.GAlleleList(["<",">","="]))
       
         # Genome instance, 1D List
         genome = G1DList.G1DList(len(alleles))
@@ -51,8 +52,8 @@ class Evolver:
         # Set the Roulette Wheel selector method, the number of generations and
         # the termination criteria
         ga.selector.set(Selectors.GRouletteWheel)
-        ga.setGenerations(10)
-        ga.setPopulationSize(10)
+        ga.setGenerations(self.gen)
+        ga.setPopulationSize(self.pop)
         ga.terminationCriteria.set(GSimpleGA.ConvergenceCriteria)
 
         pop = ga.getPopulation()
@@ -60,5 +61,5 @@ class Evolver:
 
         ga.evolve(freq_stats=10)
         # Best individual
-        print( ga.bestIndividual() )
+        self.best = ga.bestIndividual()
 

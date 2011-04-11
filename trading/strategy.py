@@ -2,17 +2,18 @@ from trading.broker import *
 
 class Strategy:
 
-    def __init__(self,ticker):
-        self.start_gap = 13 
+    def __init__(self,ticker,matype=0,period=13):
         self.ticker = ticker
-        self.ma1 = ticker.indicator("MA1", "MA", optInTimePeriod=self.start_gap)
+        self.matype = matype
+        self.period = period
+        self.ma1 = ticker.indicator("MA1", "MA", optInTimePeriod=period, optInMAType=matype)
         self.signal = ticker["signal"]
         self.signal.set(0)
 
     def trade( self, ticker ):
         size = len(ticker)
-        if size < self.start_gap: 
-            log.debug("Collecting data: %d/%d" ,size, self.start_gap )
+        if size < self.period: 
+            log.debug("Collecting data: %d/%d" ,size, self.period )
             return TRADE_KEEP
 
         if ticker.price < self.ma1.value():
