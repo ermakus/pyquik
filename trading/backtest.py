@@ -73,6 +73,7 @@ class BacktestMarket(Market):
         print("Backtesting done.\nTicks: %d\nBalance: %.2f\nTrades: %d\nProfitable: %d (%.2f%%)" %
                   (self.ticks, self.balance, self.trades, self.profit_trades, 100.0 * (float(self.profit_trades) / self.trades) if self.trades > 0 else 0  ))
 
+
     def tick(self,ticker):
         Market.tick(self,ticker)
         self.ticks += 1

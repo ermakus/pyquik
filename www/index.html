@@ -7,6 +7,7 @@
     <!--[if lte IE 8]><script language="javascript" type="text/javascript" src="../excanvas.min.js"></script><![endif]-->
     <script language="javascript" type="text/javascript" src="jquery.js"></script>
     <script language="javascript" type="text/javascript" src="jquery.flot.js"></script>
+    <script language="javascript" type="text/javascript" src="jquery.flot.selection.js"></script>
     <script language="javascript" type="text/javascript" src="datasource.js"></script>
  </head>
  <body>
@@ -15,26 +16,19 @@
 
 <script type="text/javascript">
 $(function () {
-    // hard-code color indices to prevent them from shifting as
-    // countries are turned on/off
     var i = 0;
     $.each(datasets, function(key, val) {
         val.color = i;
         ++i;
     });
     
-    // insert checkboxes 
-    var choiceContainer = $("#choices");
-    $.each(datasets, function(key, val) {
-        choiceContainer.append('<input type="checkbox" name="' + key +
-                               '" checked="checked" id="id' + key + '">' +
-                               '<label for="id' + key + '">'
-                                + val.label + '</label>');
-    });
-    choiceContainer.find("input").click(plotAccordingToChoices);
+    var options = {
+        selection: { mode: "x" }
+    };
 
-    
-    function plotAccordingToChoices() {
+    var placeholder = $("#placeholder");
+
+    function plotAccordingToChoices(ranges) {
         var data = [];
 
         choiceContainer.find("input:checked").each(function () {
@@ -44,11 +38,27 @@ $(function () {
         });
 
         if (data.length > 0)
-            $.plot($("#placeholder"), data, {
-           //     yaxis: { min: 0 },
-            //    xaxis: { tickDecimals: 0 }
-            });
-    }
+            if( !(ranges && "xaxis" in ranges) )
+                $.plot(placeholder, data, options );
+            else
+                $.plot(placeholder, data,
+                          $.extend(true, {}, options, {
+                              xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }
+                          }));
+     }
+
+    // insert checkboxes 
+    var choiceContainer = $("#choices");
+    $.each(datasets, function(key, val) {
+        choiceContainer.append('<input type="checkbox" name="' + key +
+                               '" checked="checked" id="id' + key + '">' +
+                               '<label for="id' + key + '">'
+                                + val.label + '</label>');
+    });
+    choiceContainer.find("input").click(plotAccordingToChoices);
+    placeholder.bind("plotselected", function (event, ranges) {
+        plotAccordingToChoices(ranges);
+    });
 
     plotAccordingToChoices();
 });

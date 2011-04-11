@@ -61,15 +61,15 @@ class TradingTest(unittest.TestCase):
         self.ticker.time = datetime.datetime.now()
         self.ticker.price = 10.0
         self.ticker.tick()
-        self.assertEquals(self.ticker('time').data()[0], self.ticker.time )
-        self.assertEquals(self.ticker('time').size, 1 )
-        self.assertEquals(len(self.ticker('time').data()), 1 )
-        self.assertEquals(self.ticker('price').data()[0], 10.0 )
-        self.assertEquals(self.ticker('price').size, 1 )
+        self.assertEquals(self.ticker['time'].data()[0], self.ticker.time )
+        self.assertEquals(self.ticker['time'].size, 1 )
+        self.assertEquals(len(self.ticker['time'].data()), 1 )
+        self.assertEquals(self.ticker['price'].data()[0], 10.0 )
+        self.assertEquals(self.ticker['price'].size, 1 )
 
     def testHistory(self):
         self.market.load("test/testdata-1000.txt")
-        self.assertEquals(self.ticker('time').size, 1000)
+        self.assertEquals(self.ticker['time'].size, 1000)
 
     def testIndicator(self):
         ind = self.ticker.indicator("MA-30", "MA")
@@ -105,7 +105,7 @@ class TradingTest(unittest.TestCase):
     def testBroker(self):
         Order.LAST_ID=0
         broker = Broker()
-        self.ticker("price").set(100.0)
+        self.ticker["price"].set(100.0)
         o = broker.trade( TRADE_SHORT, self.ticker )
         self.assertEquals( self.market.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=S;SECCODE=SBER;TRANS_ID=1;QUANTITY=1" )
         o.submit_status({"order_key":"100"})

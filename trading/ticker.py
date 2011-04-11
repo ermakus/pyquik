@@ -38,7 +38,7 @@ class Indicator(Serie):
         Serie.__init__(self,ticker,name)
         self.func = ta_lib.func( func )
         self.kwa = kwargs
-        self.src = self.ticker("price")
+        self.src = self.ticker["price"]
         src_len = self.src.size
         if src_len:
             self.buf.resize( src_len )
@@ -72,7 +72,7 @@ class Ticker:
     def __iter__(self):
         return serie.__iter__()
 
-    def __call__(self,name):
+    def __getitem__(self,name):
         if name in self.series:
             return self.series[name]
         serie = self.series[name] = Serie( self, name)
