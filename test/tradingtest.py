@@ -121,6 +121,51 @@ class TradingTest(unittest.TestCase):
         o.status = EXECUTED 
         o = broker.trade( TRADE_EXIT, self.ticker )
         self.assertEquals( self.market.last_cmd, "ACCOUNT=L01-00000F00;CLASSCODE=SBERCC;PRICE=100.00;CLIENT_CODE=52709;ACTION=NEW_ORDER;OPERATION=B;SECCODE=SBER;TRANS_ID=5;QUANTITY=1" )
+
+
+    def testCandles(self):
+        ticker = self.market["TEST"]
+        candle1 = ticker.candle(datetime.timedelta(seconds=30))
+        candle2 = ticker.candle(datetime.timedelta(minutes=1))
+        
+        ticker.price = 10
+        ticker.time = datetime.datetime(year=2011,month=1,day=1,hour=0,minute=0,second=0)
+        ticker.tick()
+        ticker.price = 20
+        ticker.time = datetime.datetime(year=2011,month=1,day=1,hour=0,minute=0,second=15)
+        ticker.tick()
+        ticker.price = 5
+        ticker.time = datetime.datetime(year=2011,month=1,day=1,hour=0,minute=0,second=30)
+        ticker.tick()
+        ticker.price = 30
+        ticker.time = datetime.datetime(year=2011,month=1,day=1,hour=0,minute=0,second=45)
+        ticker.tick()
+        ticker.price = 40
+        ticker.time = datetime.datetime(year=2011,month=1,day=1,hour=0,minute=1,second=0)
+        ticker.tick()
+
+        self.assertEquals( len(candle1), 2 )
+        self.assertEquals( candle1["open"][0], 10 )
+        self.assertEquals( candle1["close"][0],20 )
+        self.assertEquals( candle1["high"][0], 20 )
+        self.assertEquals( candle1["low"][0],  10 )
+
+        self.assertEquals( candle1["open"][1], 5  )
+        self.assertEquals( candle1["close"][1],30 )
+        self.assertEquals( candle1["high"][1], 30  )
+        self.assertEquals( candle1["low"][1],  5 )
+
+        self.assertEquals( candle1.open,  40 )
+        self.assertEquals( candle1.close, 40 )
+        self.assertEquals( candle1.high,  40 )
+        self.assertEquals( candle1.low,   40 )
+
+        self.assertEquals( len(candle2), 1 )
+        self.assertEquals( candle2["open"][0], 10 )
+        self.assertEquals( candle2["close"][0],30 )
+        self.assertEquals( candle2["high"][0], 30 )
+        self.assertEquals( candle2["low"][0],  5 )
+
  
 if __name__ == '__main__':
     suite = unittest.TestSuite()

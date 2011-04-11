@@ -22,6 +22,12 @@ class Serie:
         self.buf[ self.size ] = value
         self.size += 1
 
+    def __getitem__(self,index):
+        return self.buf[index]
+
+    def __len__(self):
+        return self.size
+
     def data(self):
         return self.buf[:self.size]
 
@@ -52,10 +58,10 @@ class Indicator(Serie):
         idx = self.size-1
         self.func(idx, idx, self.src.buf, self.buf[idx:], **self.kwa)
         setattr( self.ticker, self.name, self.buf[idx] )
+
+
  
 class Ticker:
-
-    SERIES = ['time','price','volume']
 
     def __init__(self,market,name):
         self.market = market
@@ -64,13 +70,16 @@ class Ticker:
         self.series = {}
         self.indicators = {}
         self.orders = []
+        self.candles = {}
         self.price = 0.0
         self.ontick = Hook()
-        for name in Ticker.SERIES:
-            self.series[ name ] = Serie(self,name,dtype=(numpy.float if name != 'time' else datetime.datetime))
+        self.series["time"] = t = Serie(self,"time",dtype=datetime.datetime)
+        t.set( datetime.datetime.now() )
+        self["price"].set(0.0)
+        self["volume"].set(0.0)
 
-    def __iter__(self):
-        return serie.__iter__()
+    def __len__(self):
+        return len( self["price"] )
 
     def __getitem__(self,name):
         if name in self.series:
@@ -85,6 +94,13 @@ class Ticker:
             raise Exception("Indicator function not set")
         ind = self.indicators[name] = Indicator( self, name, func, **kwargs )
         return ind
+
+    def candle(self,period):
+        if period in self.candles:
+            return self.candles[period]
+        c = self.candles[period] = Candle( self.market, period, self )
+        return c
+
 
     def buy(self,price=MARKET_PRICE,quantity=1):
         o = Order(self,BUY, price, quantity)
@@ -108,9 +124,48 @@ class Ticker:
     def tick(self):
         for serie in self.series.values():
             serie.push( getattr( self, serie.name, None ) )
+        for candle in self.candles.values():
+            candle.tick()
         for ind in self.indicators.values():
             ind.push( self.price )
         self.ontick( self )
 
     def __repr__(self):
         return "%s: %.2f" % (self.name, self.price)
+
+class Candle(Ticker):
+
+    def __init__(self,market,period, ticker):
+        Ticker.__init__(self,market,str(period))
+        self.period = period
+        self.ticker = ticker
+        self.open_time = None
+        self["open"].set(0.0)
+        self["close"].set(0.0)
+        self["high"].set(0.0)
+        self["low"].set(0.0)
+
+    def __len__(self):
+        return len(self["open"])
+
+    def tick(self):
+        if not self.open_time:
+            self.open_time = self.ticker.time
+            self.open = self.close = self.high = self.low = self.ticker.price
+            return
+        if (self.ticker.time - self.open_time) >= self.period:
+            self["open"].push( self.open )
+            self["close"].push( self.close )
+            self["high"].push( self.high )
+            self["low"].push( self.low )
+            self.open = self.close = self.high = self.low = self.ticker.price
+            self.open_time = self.ticker.time
+            return
+        
+        self.close = self.ticker.price
+        if self.close > self.high: self.high = self.close
+        if self.close < self.low: self.low = self.close
+
+    def __repr__(self):
+        return "%s: Open=%.2f Hight: %.2f Low: %.2f Close: %.2f" % (self.name, self.open, self.high, self.low, self.close )
+
