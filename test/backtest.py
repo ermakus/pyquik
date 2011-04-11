@@ -1,13 +1,17 @@
 import unittest,sys,datetime
-from trading.finam import FinamData
+from trading.backtest import BacktestMarket
+from trading.strategy import Strategy
 
 class BackTest(unittest.TestCase):
 
     def setUp(self):
-        pass
+        self.market = BacktestMarket()
 
-    def testFinam(self):
-#        finam = FinamData()
-#        fp = finam.read( "SBER", datetime.datetime.now(), datetime.datetime.now() - datetime.timedelta(days=1), datetime.timedelta(minutes=1))
-#        print("READ: %s" % fp.read())
-        pass
+    def testStrategy(self):
+        candle = self.market["SBER"].candle( datetime.timedelta( minutes=1 ) )
+        candle.strategy( Strategy )
+        self.market.load( "test/sber-1000.csv" )
+        self.assertEquals( self.market.ticks, 1000 )
+        self.assertEquals( self.market.trades, 23 ) 
+        self.assertAlmostEqual( self.market.balance, 1.31 ) 
+

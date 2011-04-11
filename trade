@@ -4,19 +4,23 @@ from trading.strategy import Strategy
 from trading.backtest import BacktestMarket
 from trading.evolver import Evolver
 from util import save_as_js
-import logging, time, sys
+import datetime
+import logging,  sys
 
 log = logging.getLogger("strategy")
-
+logging.basicConfig(level=logging.DEBUG)
+log.info("STARTED")
 
 def main():
 
-#    logging.basicConfig(level=logging.DEBUG)
 
     if len(sys.argv) > 1:
         market = BacktestMarket()
-        market.add_strategy( Strategy( "Bankruptsy", [market["SBER"]], 11 ) )
+        market["SBER"].candle( datetime.timedelta( minutes=1 ) ).strategy( Strategy )
         market.load( sys.argv[1] )
+        print("Backtesting done.\nTicks: %d\nBalance: %.2f\nTrades: %d\nProfitable: %d (%.2f%%)" %
+                  (market.ticks, market.balance, market.trades, market.profit_trades, 100.0 * (float(market.profit_trades) / market.trades) if market.trades > 0 else 0  ))
+
         if len(sys.argv) > 2:
             save_as_js( market["SBER"], sys.argv[2] )
     else:
@@ -27,7 +31,7 @@ def main():
             sys.exit(1)
 
         market = QuikMarket( "c:\\quik-bcs","QuikDDE" )
-        market.add_strategy( Strategy( "Bankruptsy", [market["SBER03"]] ) )
+        market["SBER"].candle( datetime.timedelta( minutes=1 ) ).strategy( Strategy )
         market.run()
 
 def profile():

@@ -29,11 +29,6 @@ class Market:
 
     def tick(self, ticker):
         ticker.tick()
-        for strategy in self.strategies.values():
-            if ticker in strategy.tickers:
-                position = strategy.trade( ticker )
-                #log.debug("Strategy: %s -> %s", strategy.name, "IDLE" if position != 0 else ("LONG" if position > 0 else "SHORT") )
-                self.broker.trade( position, ticker )
 
     def execute(self,order,callback=None):
         """ Execute transaction """

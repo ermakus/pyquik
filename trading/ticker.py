@@ -59,7 +59,6 @@ class Indicator(Serie):
         self.func(idx, idx, self.src.buf, self.buf[idx:], **self.kwa)
         setattr( self.ticker, self.name, self.buf[idx] )
 
-
  
 class Ticker:
 
@@ -69,12 +68,11 @@ class Ticker:
         self.classcode = False
         self.series = {}
         self.indicators = {}
-        self.orders = []
         self.candles = {}
-        self.price = 0.0
+        self.strategies = {}
+        self.orders = []
         self.ontick = Hook()
-        self.series["time"] = t = Serie(self,"time",dtype=datetime.datetime)
-        t.set( datetime.datetime.now() )
+        self["time"].set( datetime.datetime.now() )
         self["price"].set(0.0)
         self["volume"].set(0.0)
 
@@ -84,8 +82,18 @@ class Ticker:
     def __getitem__(self,name):
         if name in self.series:
             return self.series[name]
-        serie = self.series[name] = Serie( self, name)
+        if name == "time":
+            serie = Serie(self, name, dtype=datetime.datetime)
+        else: 
+            serie = Serie(self, name)
+        self.series[name] = serie
         return serie
+
+    def candle(self,period):
+        if period in self.candles:
+            return self.candles[period]
+        c = self.candles[period] = Candle( self.market, period )
+        return c
 
     def indicator(self,name,func=None, **kwargs):
         if name in self.indicators:
@@ -94,13 +102,6 @@ class Ticker:
             raise Exception("Indicator function not set")
         ind = self.indicators[name] = Indicator( self, name, func, **kwargs )
         return ind
-
-    def candle(self,period):
-        if period in self.candles:
-            return self.candles[period]
-        c = self.candles[period] = Candle( self.market, period, self )
-        return c
-
 
     def buy(self,price=MARKET_PRICE,quantity=1):
         o = Order(self,BUY, price, quantity)
@@ -112,6 +113,23 @@ class Ticker:
         self.orders.append(o)
         return o
 
+    def strategy(self,cls):
+        self.strategies[cls] = cls(self)
+
+    def trade(self):
+        for serie in self.series.values():
+            serie.push( getattr( self, serie.name, None ) )
+        for candle in self.candles.values():
+            candle.time = self.time
+            candle.price = self.price
+            candle.tick()
+        for ind in self.indicators.values():
+            ind.push( self.price )
+        self.ontick( self )
+        for strategy in self.strategies.values():
+            position = strategy.trade( self )
+            self.market.broker.trade( position, self )
+
     def order(self, order_key):
         tmp = Order( self )
         tmp.order_key = order_key
@@ -122,23 +140,16 @@ class Ticker:
             return tmp
 
     def tick(self):
-        for serie in self.series.values():
-            serie.push( getattr( self, serie.name, None ) )
-        for candle in self.candles.values():
-            candle.tick()
-        for ind in self.indicators.values():
-            ind.push( self.price )
-        self.ontick( self )
+        self.trade()
 
     def __repr__(self):
         return "%s: %.2f" % (self.name, self.price)
 
 class Candle(Ticker):
 
-    def __init__(self,market,period, ticker):
+    def __init__(self,market,period):
         Ticker.__init__(self,market,str(period))
         self.period = period
-        self.ticker = ticker
         self.open_time = None
         self["open"].set(0.0)
         self["close"].set(0.0)
@@ -148,23 +159,27 @@ class Candle(Ticker):
     def __len__(self):
         return len(self["open"])
 
+
+    def open_candle(self):
+        self.open_time = self.time
+        self.open = self.close = self.high = self.low = self.price
+
+    def close_candle(self):
+        self.trade()
+        self.open_candle()
+
     def tick(self):
         if not self.open_time:
-            self.open_time = self.ticker.time
-            self.open = self.close = self.high = self.low = self.ticker.price
+            self.open_candle()
             return
-        if (self.ticker.time - self.open_time) >= self.period:
-            self["open"].push( self.open )
-            self["close"].push( self.close )
-            self["high"].push( self.high )
-            self["low"].push( self.low )
-            self.open = self.close = self.high = self.low = self.ticker.price
-            self.open_time = self.ticker.time
-            return
-        
-        self.close = self.ticker.price
-        if self.close > self.high: self.high = self.close
-        if self.close < self.low: self.low = self.close
+        if (self.time - self.open_time) >= self.period:
+            self.close_candle()
+        else:
+            self.close = self.price
+            if self.close > self.high: 
+                self.high = self.close
+            if self.close < self.low: 
+                self.low = self.close
 
     def __repr__(self):
         return "%s: Open=%.2f Hight: %.2f Low: %.2f Close: %.2f" % (self.name, self.open, self.high, self.low, self.close )

@@ -2,6 +2,7 @@ import unittest, datetime
 from trading import *
 from trading.backtest import BacktestMarket
 from trading.broker import *
+from trading.strategy import Strategy
 from util import Hook, ReadyHook, cmd2str
 
 
@@ -166,7 +167,6 @@ class TradingTest(unittest.TestCase):
         self.assertEquals( candle2["high"][0], 30 )
         self.assertEquals( candle2["low"][0],  5 )
 
- 
 if __name__ == '__main__':
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(TradingTest))

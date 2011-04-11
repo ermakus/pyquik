@@ -1,5 +1,5 @@
 import logging
-from time import mktime
+import datetime
 from trading.market import Market
 from trading.order import *
 from trading.broker import TRADE_EXIT
@@ -45,20 +45,35 @@ class BacktestMarket(Market):
             try:
                 IDX_LAST  = headers.index( '<LAST>' )
                 IDX_VOL  = headers.index( '<VOL>' )
+                CANDLES = False
             except ValueError:
-                IDX_LAST = headers.index( '<CLOSE>' )
-                IDX_VOL = 0
+                IDX_OPEN = headers.index( '<OPEN>' )
+                IDX_CLOSE = headers.index( '<CLOSE>' )
+                IDX_HIGH = headers.index( '<HIGH>' )
+                IDX_LOW = headers.index( '<LOW>' )
+                CANDLES = True
             line = fp.readline()
             while line:
                 row = line.rstrip().split(',')
-                ticker = self[ row[ IDX_TICKER ] ]
+                if CANDLES:
+                    ticker = self[ row[ IDX_TICKER ] ].candle( datetime.timedelta( minutes=1 ) )
+                else:
+                    ticker = self[ row[ IDX_TICKER ] ]
                 # strptime is ridiculously slow, use mktime instead
                 d = row[ IDX_DATE ]
                 t = row[ IDX_TIME ] 
-                ticker.time = mktime([int(d[0:4]), int(d[4:6]), int(d[6:8]), int(t[0:2]), int(t[2:4]), int(t[4:6]),0,0,-1])
-                ticker.price = float(row[ IDX_LAST ])
-                if IDX_VOL: ticker.volume = float(row[ IDX_VOL ])
-                self.tick(ticker)
+                ticker.time = datetime.datetime(int(d[0:4]), int(d[4:6]), int(d[6:8]), int(t[0:2]), int(t[2:4]), int(t[4:6]))
+                if CANDLES: 
+                    ticker.open_time = ticker.time - ticker.period
+                    ticker.open = float(row[ IDX_OPEN ])
+                    ticker.price = ticker.close = float(row[ IDX_CLOSE ])
+                    ticker.high = float(row[ IDX_HIGH ])
+                    ticker.low = float(row[ IDX_LOW ])
+                    self.tick(ticker)
+                else:
+                    ticker.price = float(row[ IDX_LAST ])
+                    ticker.volume = float(row[ IDX_VOL ])
+                    self.tick(ticker)
                 line = fp.readline()
         finally:
             fp.close()
@@ -69,9 +84,6 @@ class BacktestMarket(Market):
             log.debug("Selling paper %s on exit", paper)
             paper.market.broker.trade(TRADE_EXIT,paper)
             self.tick(paper)
-
-        print("Backtesting done.\nTicks: %d\nBalance: %.2f\nTrades: %d\nProfitable: %d (%.2f%%)" %
-                  (self.ticks, self.balance, self.trades, self.profit_trades, 100.0 * (float(self.profit_trades) / self.trades) if self.trades > 0 else 0  ))
 
 
     def tick(self,ticker):
