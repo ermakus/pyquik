@@ -122,7 +122,7 @@ cdef class Quik:
             def callback (hwnd, hwnds):
                 if win32gui.IsWindowVisible (hwnd) and win32gui.IsWindowEnabled (hwnd):
                     title = win32gui.GetWindowText(hwnd)
-                    if "Информационно-торговая система QUIK" in title: hwnds.append (hwnd)
+                    if "QUIK (" in title: hwnds.append (hwnd)
                 return True
             hwnds = []
             win32gui.EnumWindows (callback, hwnds)
@@ -159,8 +159,8 @@ RE_ITEM  = re.compile("R(\\d*)C(\\d*):R(\\d*)C(\\d*)");
 
 cdef void quik_ondata(char* topic, char* item, Table* table):
     global quik
-    cdef str title
-    cdef str page
+    cdef unicode title
+    cdef unicode page
     cdef int row
     cdef int col
     cdef int rows
@@ -197,7 +197,7 @@ cdef void quik_ondata(char* topic, char* item, Table* table):
                 top = 1
                 try:
                     handler.headers = [ table.getString(0, c).decode("utf-8") for c in range( cols ) ]
-                    handler.indexes = [ handler.headers.index( handler.fields[f] ) for f in handler.fields ]
+                    handler.indexes = [ handler.headers.index( handler.fields[f].decode("utf-8") ) for f in handler.fields ]
                 except ValueError:
                     raise Exception("Table '%s' header do not match column list" % title )
             else:

@@ -23,6 +23,7 @@ class Evolver:
         ticker = market["SBER"]
         ticker.candle( datetime.timedelta( minutes=1) ).strategy(Strategy, genome[0], genome[1])
         market.load( self.filename )
+        print("Type: %s Priod: %s -> %s (%s from %s)" % ( genome[0], genome[1], market.balance, market.trades, market.profit_trades ) )
         return market.balance
 
     def run(self):

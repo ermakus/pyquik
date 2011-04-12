@@ -28,6 +28,7 @@ class Market:
         self.strategies[ strategy.name ] = strategy
 
     def tick(self, ticker):
+        print( ticker )
         ticker.tick()
 
     def execute(self,order,callback=None):

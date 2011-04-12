@@ -1,16 +1,19 @@
+# -*- coding: utf-8 -*-
 import unittest,sys
 sys.path.insert(0, '.')
-from quik import quik
+
+def print_data(x):
+    print(x)
 
 class QDDETest(unittest.TestCase):
 
     def setUp(self):
         self.quik = quik.Quik("C:\\quik-bcs","QuikDDE")
-        self.quik.register( "TICKERS",{"code":"Код бумаги","name":"Бумага","price":"Цена послед."}, lambda x: print(x) )
+        self.quik.subscribe( "TICKERS",{"code":"Код бумаги","name":"Бумага","price":"Цена послед."}, print_data )
 
     def testRun(self):
         self.assertTrue(self.quik.error(),"OK")
-        self.quik.execute({"trans_id":"1"}, lambda res,err,rep,tid,order,msg: print(msg) )
+        self.quik.execute({"trans_id":"1"}, print_data )
         self.quik.run()
 
 if __name__ == '__main__':

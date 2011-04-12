@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import datetime
+from quik import Quik
 from trading import market
 from trading.order import Order, BUY, SELL, EXECUTED, ACTIVE, KILLED
-from quik.quik import Quik
     
 ORDER_OP = {"Купля":BUY,"Продажа":SELL}
 

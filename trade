@@ -4,6 +4,7 @@ from trading.strategy import Strategy
 from trading.backtest import BacktestMarket
 from trading.evolver import Evolver
 from util import save_as_js
+from optparse import OptionParser
 import datetime
 import logging,  sys
 
@@ -11,44 +12,62 @@ log = logging.getLogger("strategy")
 logging.basicConfig(level=logging.DEBUG)
 log.info("STARTED")
 
-def main():
 
-    if len(sys.argv) > 1:
-        market = BacktestMarket()
-        market["SBER"].candle( datetime.timedelta( minutes=1 ) ).strategy( Strategy, 2, 71 )
-        market.load( sys.argv[1] )
-        print("Backtesting done.\nTicks: %d\nBalance: %.2f\nTrades: %d\nProfitable: %d (%.2f%%)" %
-                  (market.ticks, market.balance, market.trades, market.profit_trades, 100.0 * (float(market.profit_trades) / market.trades) if market.trades > 0 else 0  ))
+def do_backtest(args,options):
+    if len(args) < 2:
+        raise Exception("Specify history file for backtest")
 
-        if len(sys.argv) > 2:
-            save_as_js( market["SBER"], sys.argv[2] )
-    else:
-        try:
-            from quik.market import QuikMarket
-        except ImportError:
-            print("Quik connector not available")
-            sys.exit(1)
+    market = BacktestMarket()
+    market["SBER"].candle( datetime.timedelta( minutes=1 ) ).strategy( Strategy, 2, 71 )
+    market.load( args[1] )
+    print("Backtesting done.\nTicks: %d\nBalance: %.2f\nTrades: %d\nProfitable: %d (%.2f%%)" %
+              (market.ticks, market.balance, market.trades, market.profit_trades, 100.0 * (float(market.profit_trades) / market.trades) if market.trades > 0 else 0  ))
 
-        market = QuikMarket( "c:\\quik-bcs","QuikDDE" )
-        market["SBER"].candle( datetime.timedelta( minutes=1 ) ).strategy( Strategy )
-        market.run()
+    if len(args) > 2:
+        save_as_js( market["SBER"], args[2] )
 
-def evolve():
-    ev = Evolver( sys.argv[1] )
+def do_trade(args, options):
+    try:
+        from quik.market import QuikMarket
+    except ImportError as ex:
+        raise Exception("Quik connector not available: %s" % ex)
+
+    market = QuikMarket( "c:\\quik-bcs","QuikDDE" )
+    market["SBER"].candle( datetime.timedelta( minutes=1 ) ).strategy( Strategy )
+    market.run()
+
+def do_evolve(args, options):
+    if len(args) < 2:
+        raise Exception("Specify history file for evolve")
+
+    ev = Evolver( args[1] )
     ev.run()
     print(ev.best)
  
-def profile():
+def profile(func, args, options):
     import hotshot, hotshot.stats
     prof = hotshot.Profile("trade.prof")
-    prof.runcall(main)
+    prof.runcall(func,args,options)
     prof.close()
     stats = hotshot.stats.load("trade.prof")
     stats.strip_dirs()
     stats.sort_stats('time', 'calls')
     stats.print_stats(50)
 
-
-
 if __name__ == "__main__":
-    main()
+    parser = OptionParser("usage: %prog [options] <trade|backtest|evolve>")
+    parser.add_option("-p", "--profile", action="store_true", dest="profile", default=False, help="Profile code perfomance")
+    (options, args) = parser.parse_args()
+    if len(args)<1:
+        parser.error("incorrect number of arguments")
+    fname = "do_%s" % args[0]
+    if not fname in globals():
+        parser.error("invalid action: %s" % args[0])
+
+    try:
+        if options.profile:
+            profile( globals()[fname], args, options )
+        else:
+            globals()[fname]( args, options )
+    except Exception as ex:
+        parser.error( str(ex) )
