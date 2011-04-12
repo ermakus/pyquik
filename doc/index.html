@@ -7,82 +7,91 @@
   <link rel="shortcut icon" href="favicon.ico">
   <link rel="stylesheet" href="tripoli.simple.css" type="text/css">
   <!--[if IE]><link rel="stylesheet" href="tripoli.simple.ie.css" type="text/css"><![endif]-->
-  <link href="fonts.css" rel="stylesheet" type="text/css">
   <link rel="stylesheet" href="lolstyles.css" type="text/css">
 </head>
 <body class="content">
 
 <header>
-  <h1>PyQuik</h1>
-  <p>Tranding with <em>python</em> and <em>Quik</em></p>
+  <table>
+   <tr>
+    <td><img src="logo.png" width="200" height="200"></td>
+    <td><p><em>py</em>QUIK</p><h1>Платформа для алгоритмического трейдинга</h1></td>
+   </tr>
+  </table>
   <a href="http://github.com/ermakus/pyquik" id="fork-me">Fork me on Github</a>
 </header>
 
 <section id="features">
   <header>
-    <h2>Features</h2>
+    <h2>Возможности</h2>
   </header>
   
   <ul>
-    <li>Import data with DDE</li>
-    <li>Submit orders with trans2quik.dll</li>
-    <li>Native interface with <a href="http://ta-lib.org/">TA-Lib</a> (more then 150 functions and indicators)</li>
-    <li>Monitoring over WEB interface</li>
+    <li>Быстрое создание и проверка торговых стратегий на языке Python</li>
+    <li>Встроенный DDE сервер</li>
+    <li>Асинхронная отправка транзакций trans2quik.dll и отслеживание исполнения</li>
+    <li>Интерфейс с библиотекой технического анализа <a href="http://ta-lib.org/">TA-Lib</a> (более 150 функций и индикаторов)</li>
+    <li>Тестирование стратегий на исторических данных finam</li>
+    <li>Оптимизация параметров стратегии генетическим алгоритмом</li>
+    <li>Мониторинг через WEB интерфейс</li>
   </ul>
 
 </section>
 
 <section id="examples">
   <header>
-    <h2>Example</h2>
+    <h2>Пример использования</h2>
   </header>
   
-  <p>Sample trading robot</p>
+  <p>Простейшая торговая стратегия на основе пересечения цены и скользящий средней</p>
 
 <div class="highlight">
-<pre>
-<code class="python">
-from quik import Quik
-from trading import order
+<pre style='color:#d1d1d1;background:#000000;'><span style='color:#e66170; font-weight:bold; '>class</span> SimpleRobot<span style='color:#d2cd86; '>:</span>
 
-# Called every price change
-def handle_tick( ticker ):
-    if ticker.price &lt; 100.0:
-        ticker.buy( order.MARKET_PRICE, 1 )
-    if ticker.price &gt; 200.0 and ticker.orders.quantity &gt; 0:
-        ticker.sell( order.MARKET_PRICE, ticker.orders.quantity )
+    <span style='color:#e66170; font-weight:bold; '>def</span> <span style='color:#e34adc; '>__init__</span><span style='color:#d2cd86; '>(</span>self<span style='color:#d2cd86; '>,</span>ticker<span style='color:#d2cd86; '>,</span>matype<span style='color:#d2cd86; '>=</span><span style='color:#008c00; '>0</span><span style='color:#d2cd86; '>,</span>period<span style='color:#d2cd86; '>=</span><span style='color:#008c00; '>13</span><span style='color:#d2cd86; '>)</span><span style='color:#d2cd86; '>:</span>
+        self<span style='color:#d2cd86; '>.</span>ticker <span style='color:#d2cd86; '>=</span> ticker
+        self<span style='color:#d2cd86; '>.</span>matype <span style='color:#d2cd86; '>=</span> matype
+        self<span style='color:#d2cd86; '>.</span>period <span style='color:#d2cd86; '>=</span> period
+        self<span style='color:#d2cd86; '>.</span>ma1 <span style='color:#d2cd86; '>=</span> ticker<span style='color:#d2cd86; '>.</span>indicator<span style='color:#d2cd86; '>(</span><span style='color:#00c4c4; '>"MA1"</span><span style='color:#d2cd86; '>,</span> <span style='color:#00c4c4; '>"MA"</span><span style='color:#d2cd86; '>,</span> optInTimePeriod<span style='color:#d2cd86; '>=</span>period<span style='color:#d2cd86; '>,</span> optInMAType<span style='color:#d2cd86; '>=</span>matype<span style='color:#d2cd86; '>)</span>
+        self<span style='color:#d2cd86; '>.</span>signal <span style='color:#d2cd86; '>=</span> ticker<span style='color:#d2cd86; '>[</span><span style='color:#00c4c4; '>"signal"</span><span style='color:#d2cd86; '>]</span>
+        self<span style='color:#d2cd86; '>.</span>signal<span style='color:#d2cd86; '>.</span>set<span style='color:#d2cd86; '>(</span><span style='color:#008c00; '>0</span><span style='color:#d2cd86; '>)</span>
 
-quik = Quik("c:\\quik","QuikDDE")
-quik.SBER03.ontick( handle_tick )
-quik.run()
-</code>
+    <span style='color:#e66170; font-weight:bold; '>def</span> trade<span style='color:#d2cd86; '>(</span> self<span style='color:#d2cd86; '>,</span> ticker <span style='color:#d2cd86; '>)</span><span style='color:#d2cd86; '>:</span>
+        size <span style='color:#d2cd86; '>=</span> <span style='color:#e34adc; '>len</span><span style='color:#d2cd86; '>(</span>ticker<span style='color:#d2cd86; '>)</span>
+        <span style='color:#e66170; font-weight:bold; '>if</span> size <span style='color:#d2cd86; '>&lt;</span> self<span style='color:#d2cd86; '>.</span>period<span style='color:#d2cd86; '>:</span> 
+            log<span style='color:#d2cd86; '>.</span>debug<span style='color:#d2cd86; '>(</span><span style='color:#00c4c4; '>"Collecting data: %d/%d"</span> <span style='color:#d2cd86; '>,</span>size<span style='color:#d2cd86; '>,</span> self<span style='color:#d2cd86; '>.</span>period <span style='color:#d2cd86; '>)</span>
+            <span style='color:#e66170; font-weight:bold; '>return</span> TRADE_KEEP
+
+        <span style='color:#e66170; font-weight:bold; '>if</span> ticker<span style='color:#d2cd86; '>.</span>price <span style='color:#d2cd86; '>&lt;</span> self<span style='color:#d2cd86; '>.</span>ma1<span style='color:#d2cd86; '>.</span>value<span style='color:#d2cd86; '>(</span><span style='color:#d2cd86; '>)</span><span style='color:#d2cd86; '>:</span>
+            self<span style='color:#d2cd86; '>.</span>signal<span style='color:#d2cd86; '>.</span>set<span style='color:#d2cd86; '>(</span> <span style='color:#008c00; '>1</span> <span style='color:#d2cd86; '>)</span>
+        <span style='color:#e66170; font-weight:bold; '>else</span><span style='color:#d2cd86; '>:</span>
+            self<span style='color:#d2cd86; '>.</span>signal<span style='color:#d2cd86; '>.</span>set<span style='color:#d2cd86; '>(</span> <span style='color:#008c00; '>0</span> <span style='color:#d2cd86; '>)</span>
+
+        ssum <span style='color:#d2cd86; '>=</span> sum<span style='color:#d2cd86; '>(</span>self<span style='color:#d2cd86; '>.</span>signal<span style='color:#d2cd86; '>.</span>data<span style='color:#d2cd86; '>(</span><span style='color:#d2cd86; '>)</span><span style='color:#d2cd86; '>[</span><span style='color:#d2cd86; '>-</span><span style='color:#008c00; '>5</span><span style='color:#d2cd86; '>:</span><span style='color:#d2cd86; '>]</span><span style='color:#d2cd86; '>)</span> 
+        <span style='color:#e66170; font-weight:bold; '>if</span> ssum <span style='color:#d2cd86; '>=</span><span style='color:#d2cd86; '>=</span> <span style='color:#009f00; '>5.0</span><span style='color:#d2cd86; '>:</span> 
+            <span style='color:#e66170; font-weight:bold; '>return</span> TRADE_LONG
+        <span style='color:#e66170; font-weight:bold; '>if</span> ssum <span style='color:#d2cd86; '>=</span><span style='color:#d2cd86; '>=</span> <span style='color:#009f00; '>0.0</span><span style='color:#d2cd86; '>:</span>
+            <span style='color:#e66170; font-weight:bold; '>return</span> TRADE_EXIT
+
+        <span style='color:#e66170; font-weight:bold; '>return</span> TRADE_KEEP
 </pre>
 </div>
   
 </section>
 
-<section id="docs">
-  <header>
-    <h2>Documentation</h2>
-  </header>
-  
-  <p>TODO</p>
-
-</section>
-
 <footer id="about">
   <header>
-    <h2>About</h2>
+    <h2>О проекте</h2>
   </header>
 
   <section>
-    <h3>Author</h3>
+    <h3>Автор</h3>
     <ul>
-      <li>Written by <a href="http://www.ermak.us">Anton Ermak</a></li>
+      <li><a href="http://www.ermak.us">Антон Ермак</a></li>
     </ul>
 
-    <h3>License</h3>
-    <p>PyQuik is <a href="http://unlicense.org/">UNLICENSED</a>.</p>
+    <h3>Лицензия</h3>
+    <ul><li><a href="http://www.gnu.org/licenses/gpl-3.0.html">GPL 3.0</a></li></ul>
   </section>
 </footer>
 

@@ -18,7 +18,7 @@ def do_backtest(args,options):
         raise Exception("Specify history file for backtest")
 
     market = BacktestMarket()
-    market["SBER"].candle( datetime.timedelta( minutes=1 ) ).strategy( Strategy, 2, 71 )
+    market["SBER"].candle( datetime.timedelta( minutes=1 ) ).strategy( Strategy, 0, 13 )
     market.load( args[1] )
     print("Backtesting done.\nTicks: %d\nBalance: %.2f\nTrades: %d\nProfitable: %d (%.2f%%)" %
               (market.ticks, market.balance, market.trades, market.profit_trades, 100.0 * (float(market.profit_trades) / market.trades) if market.trades > 0 else 0  ))
