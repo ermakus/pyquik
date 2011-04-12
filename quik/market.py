@@ -12,7 +12,8 @@ class QuikMarket(market.Market):
         market.Market.__init__(self)
 
         self.conn = Quik( path, dde )
-
+        self.bid = {}
+        self.ask = {}
         self.conn.subscribe( "TICKERS", {
             "seccode":"Код бумаги",
             "classcode":"Код класса",
@@ -29,8 +30,23 @@ class QuikMarket(market.Market):
             "state":"Состояние"
         }, self.onorder )
 
+        self.conn.subscribe( "BOOK", {
+            "price":"Цена",
+            "ask":"Покупка",
+            "bid":"Продажа"
+        }, self.onbook, self.onbookready )
+
+    def onbookready(self,tool):
+        ticker = self.ticker( tool )
+        ticker.book( self.bid, self.ask )
+        self.bid = {}
+        self.ask = {}
+
     def onbook(self,data):
-        print(data)
+        if data["bid"]:
+            self.bid[ data["price"] ] = data["bid"]
+        if data["ask"]:
+            self.ask[ data["price"] ] = data["ask"]
  
     def ontick(self,data):
         """ Quik tickers data handler """

@@ -47,12 +47,13 @@ quik = None
 
 class DataHandler:
 
-    def __init__(self, name, fields, callback):
+    def __init__(self, name, fields, callback, bookready):
         self.name = name
         self.fields = fields
         self.headers = None
         self.indexes = None
         self.callback = callback
+        self.bookready = bookready
 
 cdef class Quik:
 
@@ -99,14 +100,15 @@ cdef class Quik:
         self.market.ddeDisconnect()
         del self.market
 
-    def subscribe(self,table,fields,callback):
+    def subscribe(self,table,fields,callback,bookready=False):
         """Subscribe to DDE data
         table - Table name
         fields - dict { "key":"column title" }
         callback - function( row_as_dict )
         """
-        self.onready.start()
-        self.handlers[ table ] = DataHandler(table,fields,callback)
+        if not bookready:
+            self.onready.start()
+        self.handlers[ table ] = DataHandler(table,fields,callback,bookready)
 
     def error(self):
         """Returns last error message"""
@@ -193,7 +195,8 @@ cdef void quik_ondata(char* topic, char* item, Table* table):
             handler = quik.handlers[ title ]
             # Init table header
             if row == 0:
-                quik.onready.ready()
+                if not handler.bookready:
+                    quik.onready.ready()
                 top = 1
                 try:
                     handler.headers = [ table.getString(0, c).decode("utf-8") for c in range( cols ) ]
@@ -217,6 +220,9 @@ cdef void quik_ondata(char* topic, char* item, Table* table):
                     data[ f ] = val
                     c += 1
                 handler.callback( data )
+
+            if handler.bookready:
+                handler.bookready( page )
     except:
         traceback.print_exc(file=sys.stdout)
         quik.stop()

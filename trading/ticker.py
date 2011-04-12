@@ -72,6 +72,8 @@ class Ticker:
         self.strategies = {}
         self.orders = []
         self.ontick = Hook()
+        self.bid = {}
+        self.ask = {}
         self["time"].set( datetime.datetime.now() )
         self["price"].set(0.0)
         self["volume"].set(0.0)
@@ -141,6 +143,11 @@ class Ticker:
 
     def tick(self):
         self.trade()
+
+    def book(self, bid, ask):
+        self.bid = bid
+        self.ask = ask
+        print("%s: BID: %s ASK: %s" % (self.name, self.bid, self.ask))
 
     def __repr__(self):
         return "%s: %.2f" % (self.name, self.price)
