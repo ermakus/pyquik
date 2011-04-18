@@ -1,0 +1,173 @@
+html {
+  background: #ebebeb url('bkg.jpg') left top repeat;
+}
+
+body {
+  background-image: -webkit-gradient(radial, 50% 0, 150, 50% 0, 750, from(rgba(255, 255, 255, 0.9)), to(rgba(255, 255, 255, 0)));
+  background-image: -moz-radial-gradient(50% 0% 90deg, circle closest-corner, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+  background-color: transparent;
+}
+
+body > header, body > section {
+  margin: 0 auto 54px auto;
+  width: 80%;
+}
+
+header, section, aside, footer {
+  display: block;
+}
+
+body > header:first-child {
+  padding-top: 72px;
+}
+
+footer {
+  padding-top: 36px;
+  padding-bottom: 54px;
+  border-top: 1px solid rgba(255, 255, 255, 0.9);
+  background: #393939 url('footer-bkg.jpg') left top repeat;
+  color: #cccccc;
+}
+footer > * {
+  margin: 0 auto;
+  width: 80%;
+}
+footer h2, footer h3 {
+  color: #6b6b6b;
+  text-shadow: 0 -1px 0 black;
+}
+
+html, body {
+  font-size: 14px;
+  line-height: 18px;
+  color: #414141;
+}
+
+.content a {
+  color: #ed7d18;
+  text-decoration: none;
+}
+.content a:hover {
+  text-decoration: underline;
+}
+
+h1, h2, h3 {
+  font-family: "Yanone Kaffeesatz", arial, serif;
+  font-weight: 400;
+  text-transform: uppercase;
+  text-shadow: 0 2px 2px rgba(0, 0, 0, 0.66), 0 -1px 0 rgba(255, 255, 255, 0.75);
+}
+
+h1 {
+  margin-bottom: 8px;
+  font-size: 28px;
+  line-height: 28px;
+}
+
+h2 {
+  margin-bottom: 14px;
+  font-size: 32px;
+  line-height: 32px;
+}
+
+h3 {
+  margin-bottom: 16px;
+  font-size: 20px;
+  line-height: 20px;
+}
+
+body > header:first-child h1 {
+  font-family: "Yanone Kaffeesatz", arial, serif;
+  font-weight: 400;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #8fd323;
+  text-shadow: 0 2px 3px black, 0 -1px 0 white;
+}
+body > header:first-child p {
+  font-family: "Yanone Kaffeesatz", arial, serif;
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 72px;
+  line-height: 72px;
+  text-shadow: 0 2px 3px black, 0 -1px 0 white;
+}
+body > header:first-child p em {
+  color: #f8005d;
+  font-style: normal;
+}
+
+code {
+  font-family: "Inconsolata", "Monaco", "DejaVu Sans Mono", "Consolas", monospace;
+  font-weight: normal;
+}
+
+p code, ul code, ol code {
+  padding-left: 3px;
+  padding-right: 3px;
+  background-color: rgba(255, 255, 255, 0.3);
+  -moz-border-radius: 3px;
+  -webkit-border-radius: 3px;
+  -o-border-radius: 3px;
+  -ms-border-radius: 3px;
+  -khtml-border-radius: 3px;
+  border-radius: 3px;
+}
+
+#fork-me {
+  position: absolute;
+  right: 0;
+  top: 0;
+  margin: 0;
+  padding: 0;
+  display: block;
+  width: 149px;
+  height: 149px;
+  background: transparent url(http://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png) left top no-repeat;
+  text-indent: -9999px;
+  opacity: 0.66;
+  -webkit-transition: opacity 0.5s ease-in;
+  -moz-transition: opacity 0.5s ease-in;
+  -o-transition: opacity 0.5s ease-in;
+}
+#fork-me:hover {
+  opacity: 1;
+}
+
+.highlight pre {
+  margin: 0 0 18px 0;
+  padding: 9px;
+  background: #141616;
+  color: white;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  border-radius: 5px;
+  -moz-box-shadow: inset 0 1px 0 black, inset 0 -1px 0 white;
+  -webkit-box-shadow: inset 0 1px 0 black, inset 0 -1px 0 white;
+  box-shadow: inset 0 1px 0 black, inset 0 -1px 0 white;
+}
+
+.highlight .c, .highlight .c1, .highlight .cm, .highlight .cp, .highlight .cs {
+  color: #4b5a5f;
+}
+.highlight .k {
+  color: #2ebccb;
+}
+.highlight .kd, .highlight .kc, .highlight .kp, .highlight .kr {
+  color: #f8005d;
+}
+.highlight .kr {
+  color: red;
+}
+.highlight .o {
+  color: #97dc08;
+}
+.highlight .s, .highlight .s1, .highlight .sb, .highlight .sc, .highlight .sd, .highlight .s2, .highlight .se, .highlight .sh, .highlight .si, .highlight .sx {
+  color: #ddd260;
+}
+.highlight .n, .highlight .mf, .highlight .mh, .highlight .mi, .highlight .mo {
+  color: #9b61ff;
+}
+.highlight .p {
+  color: #97dc08;
+}

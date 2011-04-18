@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta http-equiv="x-ua-compatible" content="ie=edge" />
+<title>pyQuik</title>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<link rel="stylesheet" href="stylesheets/master.css" />
+<!--[if IE 8]><link rel="stylesheet" href="stylesheets/ie8.css"/><![endif]-->
+<!--[if !IE]><!--><script type="text/javascript" src="javascripts/iscroll.js"></script><!--<![endif]-->
+<script type="text/javascript" src="javascripts/jquery-1.4.2.min.js"></script>
+<!--[if lte IE 8]><script type="text/javascript" src="javascripts/excanvas.min.js"></script><![endif]-->
+<script type="text/javascript" src="javascripts/jquery.flot.js"></script>
+<script type="text/javascript" src="javascripts/jquery.flot.selection.js"></script>
+<script type="text/javascript" src="javascripts/master.js"></script>
+<script type="text/javascript" src="javascripts/main.js"></script>
+</head>
+<body>
+<div id="main" class="abs">
+	<div class="abs header_upper chrome_light">
+		<span class="float_left button" id="button_navigation">
+			Navigation
+		</span>
+		<a href="#" class="float_left button">
+			The Root
+		</a>
+		<a href="#" class="float_right button">
+			Sign out
+		</a>
+		<span id="status">Trend View</span>
+	</div>
+	<div class="abs header_lower chrome_light">
+		<a href="#" class="icon icon_refresh"></a>
+		<a href="#" class="icon icon_redo"></a>
+		<a href="#" class="icon icon_loopback"></a>
+		<a href="#" class="icon icon_squiggle"></a>
+		<a href="#" class="icon icon_shuffle"></a>
+		<a href="#" class="icon icon_magnifying_glass"></a>
+		<a href="#" class="icon icon_map_marker"></a>
+		<a href="#" class="icon icon_chat"></a>
+		<a href="#" class="icon icon_chat2"></a>
+		<a href="#" class="icon icon_medical"></a>
+		<a href="#" class="icon icon_clock"></a>
+		<a href="#" class="icon icon_eye"></a>
+		<a href="#" class="icon icon_target"></a>
+		<a href="#" class="icon icon_tag"></a>
+		<a href="#" class="icon icon_tags"></a>
+	</div>
+	<div id="main_content" class="abs">
+		<div id="main_content_inner">
+            <div id="workspace" style="width: 100%; height: 100%; overflow: hidden;"></div>
+		</div>
+	</div>
+	<div class="abs footer_lower chrome_light">
+        <div id="bottom_bar"></div>
+	</div>
+</div>
+<div id="sidebar" class="abs">
+	<span id="nav_arrow"></span>
+	<div class="abs header_upper chrome_light">pyQuik Status</div>
+	<form action="" class="abs header_lower chrome_light">
+		<input type="search" id="q" name="q" placeholder="Search..." />
+	</form>
+	<div id="sidebar_content" class="abs">
+		<div id="sidebar_content_inner">
+        </div>
+	</div>
+	<div class="abs footer_lower chrome_light">
+		<a href="#" class="icon icon_gear2 float_left"></a>
+		<span class="float_right gutter_right">This is virtual file system of entities</span>
+	</div>
+</div>
+<script type="text/javascript" src="/datasource.js"></script>
+</body>
+</html>
