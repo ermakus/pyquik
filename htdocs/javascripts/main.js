@@ -1,4 +1,24 @@
-function tick(data) {
+var data = [];
+var plot;
+
+var options = {
+        selection: { mode: "x" }
+};
+
+var placeholder;
+
+function update() {
+    plot.setData( data );
+    plot.draw();
+}
+
+function tick( bars ) {
+    n = 1;
+    for( i in data ) {
+        data[i].data.push( [bars[0], bars[n]] );
+        n++;
+    }
+    update();
 }
 
 function draw(datasets) {
@@ -8,15 +28,10 @@ function draw(datasets) {
         ++i;
     });
     
-    var options = {
-        selection: { mode: "x" }
-    };
-
-    var placeholder = $("#workspace");
+    placeholder = $("#workspace");
     placeholder.height( $("body").height() - 150 );
 
     function plotAccordingToChoices(ranges) {
-        var data = [];
 
         choiceContainer.find("input:checked").each(function () {
             var key = $(this).attr("name");
@@ -26,9 +41,9 @@ function draw(datasets) {
 
         if (data.length > 0)
             if( !(ranges && "xaxis" in ranges) )
-                $.plot(placeholder, data, options );
+                plot = $.plot(placeholder, data, options );
             else
-                $.plot(placeholder, data,
+                plot = $.plot(placeholder, data,
                           $.extend(true, {}, options, {
                               xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }
                           }));

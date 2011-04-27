@@ -5,7 +5,6 @@ def cmd2str(cmd):
     return ";".join( [ ("%s=%.2f" if name == "price" else "%s=%s") % ( name.upper(), cmd[name] ) for name in cmd ] )
 
 def gen_js(ticker):
-    yield("tick('Hello');\n")
     yield("draw( {")
     X = [ x for x in xrange(0, len(ticker))]
     for sname in ticker.series:
@@ -18,19 +17,17 @@ def gen_js(ticker):
             else:
                 bar=False
             yield('data: [')
-            Y = ticker[sname].data()
-            for i in xrange(0, len(X)):
-                yield("[%s,%s]," % (X[i],Y[i] if not bar else 100*Y[i] ))
             yield("]},")
-    for i in ticker.indicators.values():
-        yield('"%s":{' % i.name )
-        yield('label: "%s", data: [' % i.name )
-        Y = i.data()
-        for n in range(0, len(X)):
-            yield("[%s,%s]," % (X[n],Y[n]))
-        yield("]},")
     yield("});\n")
- 
+
+    for i in xrange(0, len(X)):
+        yield("tick([%s," % X[i] )
+        for sname in ticker.series:
+            if not sname in ['volume','time']:
+                Y = ticker[sname].data()
+                yield("%s," % Y[i] )
+        yield("]);\n")
+  
 def save_as_js(ticker,filename):
    js = open( filename, "w" )
    for line in gen_js( ticker ):
