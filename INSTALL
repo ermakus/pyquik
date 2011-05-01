@@ -1,0 +1,14 @@
+    INSTALL
+    =======
+
+    python setup.py install
+
+    DEPENDENCIES
+    ------------
+
+  * Python >= 2.6
+  * numpy >= 1.5.1
+  * cython >= 0.14
+  * ta-lib >= 0.4.0 ("C" library, required for talib module build)
+  * pyevolve >= 0.6rc1
+  * pywin32 >= 216 (optonal, on Windows only)   
